@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -18,10 +18,20 @@ html {
 body {
   background-color: #080808;
   color: #F0F0F0;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Scrollbar */
+/* ─── Touch performance ──────────────────────────────────────────────────────
+   Removes the 300ms tap delay on mobile — critical for a mobile-first app.
+*/
+button,
+a,
+[role="button"],
+[tabindex="0"] {
+  touch-action: manipulation;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -40,14 +50,29 @@ body {
   background: #2563EB;
 }
 
-/* Selection */
+/* ─── Selection ──────────────────────────────────────────────────────────── */
 ::selection {
   background: #2563eb33;
   color: #F0F0F0;
 }
 
-/* Focus ring */
+/* ─── Focus ring ─────────────────────────────────────────────────────────── */
 :focus-visible {
   outline: 1px solid #2563EB;
   outline-offset: 2px;
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────────
+   Respects the OS-level "reduce motion" setting. Disables all animations and
+   transitions for users who need it (WCAG 2.3.3 / AAA, strongly recommended).
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1     !important;
+    transition-duration:      0.01ms !important;
+    scroll-behavior:          auto   !important;
+  }
 }
