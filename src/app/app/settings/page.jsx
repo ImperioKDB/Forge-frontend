@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -339,6 +340,8 @@ function DangerZone() {
     setDeleting(true)
     setError(null)
     try {
+      // Call backend to permanently delete all data and the auth user
+      await apiFetch('/settings/account', { method: 'DELETE' })
       const supabase = createClient()
       await supabase.auth.signOut()
       router.push('/')
