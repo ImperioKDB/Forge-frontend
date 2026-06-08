@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
@@ -174,6 +175,37 @@ export default function SessionPage() {
   const [coderModel, setCoderModel] = useState('poolside/laguna-m.1:free')
   const [showModels, setShowModels] = useState(false)
 
+  // Load user's actual settings on mount so the model selector reflects reality
+  useEffect(() => {
+    apiFetch('/settings')
+      .then(data => {
+        if (data.settings?.planner_model) {
+          setPlannerModel(data.settings.planner_model)
+        }
+        if (data.settings?.coder_model) {
+          setCoderModel(data.settings.coder_model)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Sync model changes to backend settings so recovery / replanning uses the right models
+  const handlePlannerChange = (model) => {
+    setPlannerModel(model)
+    apiFetch('/settings', {
+      method: 'POST',
+      body: JSON.stringify({ planner_model: model })
+    }).catch(() => {})
+  }
+
+  const handleCoderChange = (model) => {
+    setCoderModel(model)
+    apiFetch('/settings', {
+      method: 'POST',
+      body: JSON.stringify({ coder_model: model })
+    }).catch(() => {})
+  }
+
   // Streaming state
   const [planStreamUrl, setPlanStreamUrl] = useState(null)
   const [planStreamStarted, setPlanStreamStarted] = useState(false)
@@ -189,31 +221,31 @@ export default function SessionPage() {
     }
   }, [session?.tasks, activeTask])
 
- // 1. Planning stream
-useEffect(() => {
-  if (session?.status === 'planning' && !planStreamStarted) {
-    setPlanStreamStarted(true)
-    setPlanStreamUrl(`/agent/session/${id}/stream-plan`)
-  }
-  if (session?.status !== 'planning') {
-    setPlanStreamStarted(false)
-    setPlanStreamUrl(null)
-  }
-}, [session?.status, id, planStreamStarted])
+  // 1. Planning stream
+  useEffect(() => {
+    if (session?.status === 'planning' && !planStreamStarted) {
+      setPlanStreamStarted(true)
+      setPlanStreamUrl(`/agent/session/${id}/stream-plan`)
+    }
+    if (session?.status !== 'planning') {
+      setPlanStreamStarted(false)
+      setPlanStreamUrl(null)
+    }
+  }, [session?.status, id, planStreamStarted])
 
-// 2. Coding stream
-useEffect(() => {
-  if (!session?.tasks) return
-  const runningTask = session.tasks.find(t => t.status === 'running')
-  if (runningTask && runningTask.id !== streamingTaskId) {
-    setStreamingTaskId(runningTask.id)
-    setCodeStreamUrl(`/agent/task/${runningTask.id}/stream-code`)
-  }
-  if (!runningTask && codeStreamUrl) {
-    setCodeStreamUrl(null)
-    setStreamingTaskId(null)
-  }
-}, [session?.tasks, streamingTaskId, codeStreamUrl])
+  // 2. Coding stream
+  useEffect(() => {
+    if (!session?.tasks) return
+    const runningTask = session.tasks.find(t => t.status === 'running')
+    if (runningTask && runningTask.id !== streamingTaskId) {
+      setStreamingTaskId(runningTask.id)
+      setCodeStreamUrl(`/agent/task/${runningTask.id}/stream-code`)
+    }
+    if (!runningTask && codeStreamUrl) {
+      setCodeStreamUrl(null)
+      setStreamingTaskId(null)
+    }
+  }, [session?.tasks, streamingTaskId, codeStreamUrl])
 
   function handleDrag(deltaY) {
     setSplitPercent(prev => {
@@ -262,8 +294,8 @@ useEffect(() => {
         session={session}
         plannerModel={plannerModel}
         coderModel={coderModel}
-        onPlannerChange={setPlannerModel}
-        onCoderChange={setCoderModel}
+        onPlannerChange={handlePlannerChange}
+        onCoderChange={handleCoderChange}
         showModels={showModels}
         onToggleModels={() => setShowModels(p => !p)}
       />
@@ -312,37 +344,37 @@ useEffect(() => {
 
             {/* Awaiting approval or done: show static code draft of selected task */}
             {(isAwaitingApproval || isDone) && activeTask ? (
-  <CodeReview
-    task={activeTask}
-    draft={
-      session.code_drafts?.find(
-        d => d.task_id === activeTask.id &&
-        d.verdict === 'awaiting_approval'
-      ) ||
-      session.code_drafts?.find(
-        d => d.task_id === activeTask.id
-      )
-    }
-    onApproved={() => refetch()}
-    onFeedbackSent={() => {
-      setActiveTask(null)
-      refetch()
-    }}
-  />
-) : (isAwaitingApproval || isDone) && !activeTask ? (
-  <div className="flex-1 flex items-center justify-center px-6">
-    <div className="flex flex-col items-center gap-3 text-center">
-      <div className="w-8 h-8 rounded-full border border-accent/20 bg-accent/5 flex items-center justify-center">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1V13M1 7H13" stroke="#2563EB" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
-      <p className="text-xs font-mono text-muted">
-        Select a subtask from below to review
-      </p>
-    </div>
-  </div>
-) : null}
+              <CodeReview
+                task={activeTask}
+                draft={
+                  session.code_drafts?.find(
+                    d => d.task_id === activeTask.id &&
+                    d.verdict === 'awaiting_approval'
+                  ) ||
+                  session.code_drafts?.find(
+                    d => d.task_id === activeTask.id
+                  )
+                }
+                onApproved={() => refetch()}
+                onFeedbackSent={() => {
+                  setActiveTask(null)
+                  refetch()
+                }}
+              />
+            ) : (isAwaitingApproval || isDone) && !activeTask ? (
+              <div className="flex-1 flex items-center justify-center px-6">
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <div className="w-8 h-8 rounded-full border border-accent/20 bg-accent/5 flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M7 1V13M1 7H13" stroke="#2563EB" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <p className="text-xs font-mono text-muted">
+                    Select a subtask from below to review
+                  </p>
+                </div>
+              </div>
+            ) : null}
 
             {isFailed && <FailedState session={session} />}
           </div>
