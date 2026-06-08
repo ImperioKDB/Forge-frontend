@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState } from 'react'
@@ -64,7 +65,9 @@ export default function CodeReview({ task, draft, onApproved, onFeedbackSent }) 
       })
 
       setApproved(true)
-      setGithubUrl(data.github_url)
+      // Backend now returns github_url; fall back to branch for backward compatibility
+      const url = data.github_url || (data.branch ? `https://github.com` : null)
+      setGithubUrl(url)
       onApproved?.(data)
     } catch (err) {
       setError(err.message)
@@ -119,6 +122,7 @@ export default function CodeReview({ task, draft, onApproved, onFeedbackSent }) 
             <span className="text-xs font-mono text-muted/40">
               {code.split('\n').length} lines
             </span>
+            <CopyButton text={code} />
           </div>
         </div>
 
@@ -149,14 +153,18 @@ export default function CodeReview({ task, draft, onApproved, onFeedbackSent }) 
               Approved and pushed to branch
             </span>
 
-            <a
-              href={githubUrl || 'https://github.com'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-accent hover:underline font-mono"
-            >
-              View on GitHub →
-            </a>
+            {githubUrl && githubUrl !== 'https://github.com' ? (
+              <a
+                href={githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-accent hover:underline font-mono"
+              >
+                View on GitHub →
+              </a>
+            ) : (
+              <span className="text-xs text-muted font-mono">Branch pushed</span>
+            )}
           </div>
         ) : (
           <div className="flex gap-3">
@@ -180,6 +188,18 @@ export default function CodeReview({ task, draft, onApproved, onFeedbackSent }) 
               Approve & Push
             </Button>
           </div>
+        )}
+
+        {showFeedback && (
+          <FeedbackInput
+            onSubmit={handleFeedback}
+            onCancel={() => setShowFeedback(false)}
+            loading={sendingFeedback}
+          />
+        )}
+
+        {error && (
+          <p className="text-xs text-danger">{error}</p>
         )}
       </div>
     </div>
