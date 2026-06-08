@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState } from 'react'
@@ -12,36 +13,10 @@ export default function RepoSelector({ value, onChange }) {
   const [form, setForm] = useState({ name: '', url: '', github_pat: '', default_branch: 'main' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
-  const [validating, setValidating] = useState(false)
-  const [urlValid, setUrlValid] = useState(null)
-
-  async function validateRepo(url, pat) {
-    if (!url || !pat) return
-    setValidating(true)
-    setUrlValid(null)
-
-    try {
-      const repo = url.replace('https://github.com/', '').replace(/\/$/, '')
-      const res = await fetch(`https://api.github.com/repos/${repo}`, {
-        headers: { Authorization: `Bearer ${pat}` }
-      })
-      setUrlValid(res.ok)
-    } catch {
-      setUrlValid(false)
-    } finally {
-      setValidating(false)
-    }
-  }
 
   async function handleAdd(e) {
     e.preventDefault()
     setError(null)
-
-    if (!urlValid) {
-      setError('Please enter a valid GitHub repo URL and PAT first')
-      return
-    }
-
     setSubmitting(true)
 
     try {
@@ -54,7 +29,6 @@ export default function RepoSelector({ value, onChange }) {
       onChange(data.repo)
       setAdding(false)
       setForm({ name: '', url: '', github_pat: '', default_branch: 'main' })
-      setUrlValid(null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -113,7 +87,7 @@ export default function RepoSelector({ value, onChange }) {
                   }
                 `}>
                   {repo.index_status === 'indexed'
-                    ? `${repo.file_count} files`
+                    ? `${repo.file_count || 0} files`
                     : repo.index_status === 'indexing'
                     ? 'indexing…'
                     : repo.index_status === 'failed'
@@ -162,11 +136,7 @@ export default function RepoSelector({ value, onChange }) {
             label="GitHub URL"
             placeholder="https://github.com/owner/repo"
             value={form.url}
-            onChange={e => {
-              setForm(f => ({ ...f, url: e.target.value }))
-              setUrlValid(null)
-            }}
-            onBlur={() => validateRepo(form.url, form.github_pat)}
+            onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
             required
           />
 
@@ -176,11 +146,7 @@ export default function RepoSelector({ value, onChange }) {
             placeholder="ghp_xxxxxxxxxxxx"
             hint="Needs contents: read & write permission"
             value={form.github_pat}
-            onChange={e => {
-              setForm(f => ({ ...f, github_pat: e.target.value }))
-              setUrlValid(null)
-            }}
-            onBlur={() => validateRepo(form.url, form.github_pat)}
+            onChange={e => setForm(f => ({ ...f, github_pat: e.target.value }))}
             required
           />
 
@@ -190,24 +156,6 @@ export default function RepoSelector({ value, onChange }) {
             value={form.default_branch}
             onChange={e => setForm(f => ({ ...f, default_branch: e.target.value }))}
           />
-
-          {/* Validation status */}
-          {validating && (
-            <p className="text-xs text-muted flex items-center gap-1.5">
-              <span className="w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin" />
-              Validating repo access…
-            </p>
-          )}
-          {urlValid === true && !validating && (
-            <p className="text-xs text-success flex items-center gap-1.5">
-              <span>✓</span> Repo accessible
-            </p>
-          )}
-          {urlValid === false && !validating && (
-            <p className="text-xs text-danger">
-              Cannot access repo. Check the URL and PAT permissions.
-            </p>
-          )}
 
           {error && (
             <p className="text-xs text-danger">{error}</p>
@@ -219,7 +167,6 @@ export default function RepoSelector({ value, onChange }) {
               variant="primary"
               size="sm"
               loading={submitting}
-              disabled={!urlValid}
             >
               Add & Index
             </Button>
@@ -230,7 +177,6 @@ export default function RepoSelector({ value, onChange }) {
               onClick={() => {
                 setAdding(false)
                 setError(null)
-                setUrlValid(null)
                 setForm({ name: '', url: '', github_pat: '', default_branch: 'main' })
               }}
             >
