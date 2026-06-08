@@ -3,6 +3,7 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   loading = false,
+  loadingText = 'Loading',
   disabled = false,
   className = '',
   ...props
@@ -12,7 +13,8 @@ export default function Button({
     transition-all duration-150 border rounded
     focus-visible:outline focus-visible:outline-1
     focus-visible:outline-accent disabled:opacity-40
-    disabled:cursor-not-allowed select-none
+    disabled:cursor-not-allowed select-none cursor-pointer
+    touch-manipulation
   `
 
   const variants = {
@@ -37,21 +39,25 @@ export default function Button({
   }
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-4 py-2 text-sm gap-2',
-    lg: 'px-6 py-3 text-base gap-2',
+    sm: 'px-3 py-2.5 text-xs  gap-1.5 min-h-[40px]',
+    md: 'px-4 py-2.5 text-sm  gap-2   min-h-[44px]',
+    lg: 'px-6 py-3.5 text-base gap-2  min-h-[52px]',
   }
 
   return (
     <button
       className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
       disabled={disabled || loading}
+      aria-busy={loading ? 'true' : undefined}
       {...props}
     >
       {loading ? (
         <>
-          <span className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
-          <span>Loading</span>
+          <span
+            className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin"
+            aria-hidden="true"
+          />
+          <span>{loadingText}</span>
         </>
       ) : children}
     </button>
