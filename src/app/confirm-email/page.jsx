@@ -3,25 +3,7 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
-
-// Inlined — no standalone ForgeWordmark component file exists
-function ForgeWordmark() {
-  return (
-    <div className="font-mono font-semibold text-2xl tracking-[0.15em] relative inline-block select-none">
-      <span className="text-secondary">F</span>
-      <span className="text-accent">O</span>
-      <span className="text-secondary">R</span>
-      <span className="text-secondary">G</span>
-      <span className="text-accent">E</span>
-      <span
-        className="absolute -bottom-1 left-0 w-full h-px"
-        style={{
-          background: 'linear-gradient(90deg, transparent, #2563EB, transparent)',
-        }}
-      />
-    </div>
-  )
-}
+import ForgeWordmark from '@/components/ui/ForgeWordmark'
 
 function ConfirmEmailContent() {
   const searchParams = useSearchParams()
@@ -43,61 +25,58 @@ function ConfirmEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-base flex flex-col">
-      {/* Background */}
+    <div style={{ minHeight: '100dvh', background: 'var(--bg-base)' }}>
+      {/* Background glow */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 80% 60% at 50% 0%, #2563eb08 0%, transparent 70%)',
-        }}
-      />
-
-      {/* Grid */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: `
-            linear-gradient(#2563EB 1px, transparent 1px),
-            linear-gradient(90deg, #2563EB 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
+          background: 'radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 70%)',
         }}
       />
 
       {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-border/50">
+      <nav
+        className="relative z-10 flex items-center px-6 py-4"
+        style={{ borderBottom: '1px solid var(--bg-border)' }}
+      >
         <button
           onClick={() => router.push('/')}
           className="hover:opacity-70 transition-opacity duration-150"
         >
-          <ForgeWordmark />
+          <ForgeWordmark size="sm" />
         </button>
       </nav>
 
       {/* Content */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
+      <div className="relative z-10 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm flex flex-col items-center gap-8 text-center">
 
           {/* Icon */}
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', border: '1px solid var(--color-accent)' }}
+            style={{
+              background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+              border: '1px solid var(--accent)',
+            }}
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" className="text-accent" />
-              <path d="M2 8l10 6 10-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-accent" />
+              <rect x="2" y="4" width="20" height="16" rx="2" stroke="var(--accent)" strokeWidth="1.5" />
+              <path d="M2 8l10 6 10-6" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
 
           {/* Heading */}
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold text-secondary">
+            <h1
+              className="font-display font-semibold"
+              style={{ fontSize: '1.5rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}
+            >
               Check your inbox
             </h1>
-            <p className="text-sm text-muted leading-relaxed">
+            <p className="font-body text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               We sent a confirmation link to{' '}
               {email
-                ? <span className="text-secondary font-medium">{email}</span>
+                ? <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{email}</span>
                 : 'your email address'
               }.
               {' '}Click it to activate your account.
@@ -109,7 +88,12 @@ function ConfirmEmailContent() {
             href={mailUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-medium bg-accent text-white hover:opacity-90 transition-opacity duration-150"
+            className="w-full flex items-center justify-center gap-2 rounded-lg font-body font-medium text-sm transition-opacity duration-150 hover:opacity-90"
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: 'var(--accent)',
+              color: '#fff',
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
@@ -120,19 +104,20 @@ function ConfirmEmailContent() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 w-full">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted font-mono">OR</span>
-            <div className="flex-1 h-px bg-border" />
+            <div className="flex-1 h-px" style={{ background: 'var(--bg-border)' }} />
+            <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>OR</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--bg-border)' }} />
           </div>
 
           {/* Secondary actions */}
           <div className="flex flex-col gap-3 w-full">
-            <p className="text-xs text-muted">
+            <p className="font-body text-xs" style={{ color: 'var(--text-muted)' }}>
               Didn't get the email? Check spam, or{' '}
               <button
                 type="button"
                 onClick={() => router.push('/signup')}
-                className="text-accent hover:underline transition-colors"
+                className="transition-colors hover:underline"
+                style={{ color: 'var(--accent)' }}
               >
                 try a different address
               </button>
@@ -141,7 +126,8 @@ function ConfirmEmailContent() {
             <button
               type="button"
               onClick={() => router.push('/login')}
-              className="text-xs text-muted hover:text-secondary transition-colors"
+              className="font-body text-xs transition-colors"
+              style={{ color: 'var(--text-muted)' }}
             >
               Back to log in
             </button>
