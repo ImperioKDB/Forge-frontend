@@ -18,16 +18,6 @@ export default function NewTaskPage() {
   const [task,          setTask]          = useState('')
   const [submitting,    setSubmitting]    = useState(false)
   const [error,         setError]         = useState(null)
-  const [settings,      setSettings]      = useState(null)
-  const [settingsLoading, setSettingsLoading] = useState(true)
-
-  // Fetch settings to check if OpenRouter API key is configured
-  useEffect(() => {
-    apiFetch('/settings')
-      .then(data => setSettings(data.settings))
-      .catch(() => setSettings({}))
-      .finally(() => setSettingsLoading(false))
-  }, [])
 
   // Poll repo indexing status
   useEffect(() => {
@@ -48,16 +38,10 @@ export default function NewTaskPage() {
     return () => clearInterval(interval)
   }, [selectedRepo?.id, selectedRepo?.index_status])
 
-  const indexing     = selectedRepo?.index_status === 'indexing' || selectedRepo?.index_status === 'pending'
-  const indexFailed  = selectedRepo?.index_status === 'failed'
-
-  const taskDisabled = settingsLoading || !selectedRepo || indexing || indexFailed || !settings?.has_api_key
-
-  const disabledReason = settingsLoading
-    ? 'Loading…'
-    : !settings?.has_api_key
-    ? 'Add your OpenRouter API key in Settings to continue'
-    : !selectedRepo
+  const indexing      = selectedRepo?.index_status === 'indexing' || selectedRepo?.index_status === 'pending'
+  const indexFailed   = selectedRepo?.index_status === 'failed'
+  const taskDisabled  = !selectedRepo || indexing || indexFailed
+  const disabledReason = !selectedRepo
     ? 'Select a repository to continue'
     : indexFailed
     ? 'Indexing failed — please re-add the repository.'
@@ -75,6 +59,7 @@ export default function NewTaskPage() {
         body: JSON.stringify({
           repo_id:      selectedRepo.id,
           task:         task.trim(),
+          // FIX #1: backend expects camelCase, not snake_case
           plannerModel: plannerModel,
           coderModel:   coderModel,
         }),
@@ -113,7 +98,7 @@ export default function NewTaskPage() {
         {/* Repo selector */}
         <RepoSelector value={selectedRepo} onChange={setSelectedRepo} />
 
-        {/* Model selectors */}
+        {/* Model selectors — side by side matching mockup */}
         <ModelSelector
           plannerModel={plannerModel}
           coderModel={coderModel}
