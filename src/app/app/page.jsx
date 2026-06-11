@@ -20,6 +20,16 @@ export default function NewTaskPage() {
   const [task, setTask] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [settings, setSettings] = useState(null)
+  const [settingsLoading, setSettingsLoading] = useState(true)
+
+  // Fetch settings to check if API key is configured
+  useEffect(() => {
+    apiFetch('/settings')
+      .then(data => setSettings(data.settings))
+      .catch(() => setSettings({}))
+      .finally(() => setSettingsLoading(false))
+  }, [])
 
   // Poll indexing status while repo is indexing
   useEffect(() => {
@@ -47,13 +57,18 @@ export default function NewTaskPage() {
   const indexing = selectedRepo?.index_status === 'indexing' || selectedRepo?.index_status === 'pending'
   const indexFailed = selectedRepo?.index_status === 'failed'
 
-  const taskDisabled = !selectedRepo || indexing || indexFailed
-  const disabledReason = !selectedRepo
+  const taskDisabled = settingsLoading || !selectedRepo || indexing || indexFailed || !settings?.has_api_key
+
+  const disabledReason = settingsLoading
+    ? 'Loading…'
+    : !settings?.has_api_key
+    ? 'Add your OpenRouter API key in Settings to continue'
+    : !selectedRepo
     ? 'Select a repository to continue'
     : indexFailed
     ? 'Indexing failed. Please re-add the repository.'
     : indexing
-    ? `Indexing repository… this takes a minute`
+    ? 'Indexing repository… this takes a minute'
     : null
 
   async function handleSubmit() {
