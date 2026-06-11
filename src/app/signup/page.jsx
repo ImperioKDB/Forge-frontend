@@ -65,7 +65,7 @@ export default function SignupPage() {
     }
 
     // Go to login with success message
-    router.push('/login?signup=success')
+    router.push(`/confirm-email?email=${encodeURIComponent(email)}`)
   }
 
   return (
