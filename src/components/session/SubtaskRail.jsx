@@ -65,7 +65,7 @@ export default function SubtaskRail({ tasks, activeDraftId, onSelectTask }) {
               {isDone && (
                 <div className="mt-2 pt-2 border-t border-border flex items-center gap-1">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 5L4 7L8 3" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 5L4 7L8 3" stroke="var(--success)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span className="text-xs text-success">Approved</span>
                 </div>
