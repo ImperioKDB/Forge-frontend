@@ -4,56 +4,25 @@ import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import { useScrollReveal } from '@/lib/hooks/useScrollReveal'
 
-// ─── FORGE WORDMARK ───────────────────────────────────────────────
 function ForgeWordmark({ size = 'lg' }) {
-  const sizes = {
-    sm: 'text-2xl tracking-[0.15em]',
-    lg: 'text-5xl tracking-[0.2em]',
-    xl: 'text-7xl tracking-[0.25em]',
-  }
-
+  const sizes = { sm: 'text-2xl tracking-[0.15em]', lg: 'text-5xl tracking-[0.2em]', xl: 'text-7xl tracking-[0.25em]' }
   return (
     <div className={`font-mono font-semibold ${sizes[size]} relative inline-block select-none`}>
-      <span className="text-secondary">F</span>
-      <span className="text-accent">O</span>
-      <span className="text-secondary">R</span>
-      <span className="text-secondary">G</span>
-      <span className="text-accent">E</span>
-      <span
-        className="absolute -bottom-1 left-0 w-full h-px"
-        style={{
-          background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
-        }}
-      />
+      <span className="text-secondary">F</span><span className="text-accent">O</span><span className="text-secondary">R</span><span className="text-secondary">G</span><span className="text-accent">E</span>
+      <span className="absolute -bottom-1 left-0 w-full h-px" style={{ background: 'linear-gradient(90deg, transparent, var(--accent), transparent)' }} />
     </div>
   )
 }
 
-// ─── GRID BACKGROUND ──────────────────────────────────────────────
 function GridBackground() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `
-            linear-gradient(var(--accent) 1px, transparent 1px),
-            linear-gradient(90deg, var(--accent) 1px, transparent 1px)
-          `,
-          backgroundSize: '48px 48px',
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(232,103,26,0.05) 0%, transparent 70%)',
-        }}
-      />
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px)`, backgroundSize: '48px 48px' }} />
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(232,103,26,0.05) 0%, transparent 70%)' }} />
     </div>
   )
 }
 
-// ─── NAV ──────────────────────────────────────────────────────────
 function Nav({ onLogin, onSignup }) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 border-b border-border/50 backdrop-blur-sm bg-base/80">
@@ -66,7 +35,6 @@ function Nav({ onLogin, onSignup }) {
   )
 }
 
-// ─── HERO ─────────────────────────────────────────────────────────
 function Hero({ onSignup, onLogin }) {
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-32 relative">
@@ -77,35 +45,21 @@ function Hero({ onSignup, onLogin }) {
         </div>
         <ForgeWordmark size="xl" />
         <p className="text-xl text-muted font-light leading-relaxed max-w-lg">
-          Code doesn't wait for a desk.{' '}
-          <span className="text-secondary font-medium">Neither does Forge.</span>
+          Code doesn't wait for a desk. <span className="text-secondary font-medium">Neither does Forge.</span>
         </p>
         <div className="flex items-center gap-4 pt-2">
           <Button variant="primary" size="lg" onClick={onSignup}>Start Building</Button>
           <Button variant="ghost" size="lg" onClick={onLogin}>Sign In</Button>
         </div>
-        <div className="flex items-center gap-6 pt-4">
-          {['No laptop', 'No setup', 'No limits'].map((item) => (
-            <div key={item} className="flex items-center gap-1.5">
-              <span className="text-accent text-xs">✦</span>
-              <span className="text-xs text-muted">{item}</span>
-            </div>
-          ))}
-        </div>
       </div>
-      <div
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-px"
-        style={{ background: 'linear-gradient(90deg, transparent, var(--accent-dim), transparent)' }}
-      />
     </section>
   )
 }
 
-// ─── PAIN ─────────────────────────────────────────────────────────
 function Pain() {
   const pains = [
-    { number: '01', heading: "Your best ideas don't happen at a desk", body: "You're on your phone, away from your laptop, and a fix or feature suddenly becomes obvious. You make a note. You forget it. Or worse — you remember it but the momentum is gone by the time you sit down." },
-    { number: '02', heading: 'Coding tools assume you have a computer', body: "Every IDE, every CLI, every dev environment is built for a machine with a keyboard. Your phone is more powerful than the computer that sent people to the moon. But it can't ship code." },
+    { number: '01', heading: "Your best ideas don't happen at a desk", body: "You're on your phone, away from your laptop, and a fix or feature suddenly becomes obvious. You make a note. You forget it." },
+    { number: '02', heading: 'Coding tools assume you have a computer', body: "Every IDE, every CLI, every dev environment is built for a machine with a keyboard. Your phone is more powerful than the computer that sent people to the moon." },
     { number: '03', heading: 'The gap between idea and shipped code is too wide', body: "Open laptop. Pull latest. Find the file. Understand the context. Write the code. Test it. Commit. Push. By the time you've done all that, the idea has cost you an hour." },
   ]
   return (
@@ -129,7 +83,6 @@ function Pain() {
   )
 }
 
-// ─── SOLUTION ─────────────────────────────────────────────────────
 function Solution() {
   const statements = ['Describe a feature.', 'Forge plans it.', 'Forge writes it.', 'You approve it.', 'It ships.']
   return (
@@ -153,13 +106,12 @@ function Solution() {
   )
 }
 
-// ─── HOW IT WORKS ─────────────────────────────────────────────────
 function HowItWorks() {
   const steps = [
-    { step: '01', title: 'Connect your repo', body: 'Add any GitHub repo and your personal access token. Forge indexes your codebase instantly so the agent understands your code before it touches it.' },
-    { step: '02', title: 'Describe your task', body: 'Tell Forge what you want in plain English. Fix this bug. Add this feature. Refactor this function. The planner agent breaks it into precise subtasks.' },
-    { step: '03', title: 'Review the plan', body: 'Before any code is written, you see the plan. Approve it, edit it, or reject it. You stay in control at every step.' },
-    { step: '04', title: 'Approve and merge', body: 'Review the full file output and explanation for each change. Approve what you want. Forge pushes to a branch. You merge when ready.' },
+    { step: '01', title: 'Connect your repo', body: 'Add any GitHub repo and your personal access token. Forge indexes your codebase instantly.' },
+    { step: '02', title: 'Describe your task', body: 'Tell Forge what you want in plain English. The planner agent breaks it into precise subtasks.' },
+    { step: '03', title: 'Review the plan', body: 'Before any code is written, you see the plan. Approve it, edit it, or reject it.' },
+    { step: '04', title: 'Approve and merge', body: 'Review the full file output. Approve what you want. Forge pushes to a branch. You merge when ready.' },
   ]
   return (
     <section className="px-6 py-24 max-w-3xl mx-auto">
@@ -182,7 +134,6 @@ function HowItWorks() {
   )
 }
 
-// ─── CTA ──────────────────────────────────────────────────────────
 function CTA({ onSignup }) {
   return (
     <section className="px-6 py-32 flex flex-col items-center text-center gap-8 border-t border-border">
@@ -196,7 +147,6 @@ function CTA({ onSignup }) {
   )
 }
 
-// ─── FOOTER ───────────────────────────────────────────────────────
 function Footer() {
   return (
     <footer className="border-t border-border px-6 py-8 flex items-center justify-between">
@@ -206,39 +156,21 @@ function Footer() {
   )
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const router       = useRouter()
+  const router = useRouter()
   const containerRef = useScrollReveal()
-
-  const goToLogin  = () => router.push('/login')
+  const goToLogin = () => router.push('/login')
   const goToSignup = () => router.push('/signup')
 
   return (
     <div ref={containerRef} className="bg-base text-secondary min-h-screen">
       <GridBackground />
       <Nav onLogin={goToLogin} onSignup={goToSignup} />
-
-      <section className="reveal">
-        <Hero onSignup={goToSignup} onLogin={goToLogin} />
-      </section>
-
-      <section className="reveal">
-        <Pain />
-      </section>
-
-      <section className="reveal">
-        <Solution />
-      </section>
-
-      <section className="reveal">
-        <HowItWorks />
-      </section>
-
-      <section className="reveal">
-        <CTA onSignup={goToSignup} />
-      </section>
-
+      <section className="reveal"><Hero onSignup={goToSignup} onLogin={goToLogin} /></section>
+      <section className="reveal"><Pain /></section>
+      <section className="reveal"><Solution /></section>
+      <section className="reveal"><HowItWorks /></section>
+      <section className="reveal"><CTA onSignup={goToSignup} /></section>
       <Footer />
     </div>
   )
