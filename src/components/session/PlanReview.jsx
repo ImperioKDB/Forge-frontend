@@ -1,157 +1,141 @@
 'use client'
 
+/**
+ * FORGE — Plan Review component
+ * Phase 1: Core App Shell & Session Flow
+ *
+ * Displays the agent's subtask plan. User can approve or reject.
+ */
+
 import { useState } from 'react'
 import { apiFetch } from '@/lib/supabase/api'
 import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import StatusDot from '@/components/ui/StatusDot'
+import { useToast } from '@/components/ui/Toast'
 
 export default function PlanReview({ session, onApproved }) {
-  const plan = session?.plan
-  const [subtasks, setSubtasks] = useState(plan?.subtasks || [])
-  const [approving, setApproving] = useState(false)
-  const [editingIndex, setEditingIndex] = useState(null)
-  const [error, setError] = useState(null)
+  const { addToast }            = useToast()
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
+  const [feedback, setFeedback] = useState('')
 
-  function updateSubtask(index, field, value) {
-    setSubtasks(prev => prev.map((s, i) =>
-      i === index ? { ...s, [field]: value } : s
-    ))
-  }
+  const subtasks = session?.subtasks || []
 
   async function handleApprove() {
     setError(null)
-    setApproving(true)
-
+    setLoading(true)
     try {
-      // Save edits first if any
-      await apiFetch('/agent/edit-plan', {
-        method: 'POST',
-        body: JSON.stringify({
-          session_id: session.id,
-          subtasks,
-        }),
-      })
-
-      // Then approve
+      if (feedback.trim()) {
+        await apiFetch('/agent/edit-plan', {
+          method: 'POST',
+          body: JSON.stringify({ session_id: session.id, feedback: feedback.trim() }),
+        })
+      }
       await apiFetch('/agent/approve-plan', {
         method: 'POST',
         body: JSON.stringify({ session_id: session.id }),
       })
-
+      addToast({ message: 'Plan approved — coding started', type: 'success' })
       onApproved()
     } catch (err) {
       setError(err.message)
+      addToast({ message: err.message, type: 'error' })
     } finally {
-      setApproving(false)
+      setLoading(false)
     }
   }
 
-  const riskColors = {
-    low: 'text-success border-success/20 bg-success/5',
-    medium: 'text-accent border-accent/20 bg-accent/5',
-    high: 'text-danger border-danger/20 bg-danger/5',
+  async function handleReject() {
+    setError(null)
+    setLoading(true)
+    try {
+      await apiFetch('/agent/reject-plan', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: session.id }),
+      })
+      addToast({ message: 'Plan rejected', type: 'warning' })
+      onApproved()
+    } catch (err) {
+      setError(err.message)
+      addToast({ message: err.message, type: 'error' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-border shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          <span className="text-xs font-mono text-accent uppercase tracking-wider">
-            Plan Ready — Review Required
-          </span>
-        </div>
+    <div className="flex flex-col gap-4 px-4 py-6 max-w-2xl mx-auto">
+      <div className="flex flex-col gap-1">
+        <h2
+          className="font-display font-semibold"
+          style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}
+        >
+          Review the Plan
+        </h2>
+        <p className="font-body text-sm" style={{ color: 'var(--text-muted)' }}>
+          Forge has broken your task into {subtasks.length} subtask{subtasks.length !== 1 ? 's' : ''}.
+          Approve to start coding, or reject to restart.
+        </p>
       </div>
 
-      {/* Analysis */}
-      {plan?.analysis && (
-        <div className="px-4 py-3 border-b border-border bg-surface/50">
-          <p className="text-xs text-muted uppercase tracking-wider font-mono mb-2">
-            Analysis
-          </p>
-          <p className="text-sm text-secondary leading-relaxed">
-            {plan.analysis}
-          </p>
-        </div>
-      )}
-
-      {/* Subtasks */}
-      <div className="flex-1 px-4 py-4 flex flex-col gap-3">
-        <p className="text-xs text-muted uppercase tracking-wider font-mono">
-          Subtasks — {subtasks.length} file{subtasks.length !== 1 ? 's' : ''}
-        </p>
-
-        {subtasks.map((subtask, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-3 p-3 bg-surface border border-border rounded"
-          >
-            {/* File path + risk */}
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-mono text-accent truncate">
-                {subtask.file_path}
+      {/* Subtask list */}
+      <div className="flex flex-col gap-2">
+        {subtasks.map((task, i) => (
+          <Card key={task.id} variant="default" padding="sm">
+            <div className="flex items-start gap-3">
+              <span className="font-mono text-xs shrink-0 pt-0.5" style={{ color: 'var(--accent)', opacity: 0.7 }}>
+                {String(i + 1).padStart(2, '0')}
               </span>
-              {subtask.risk && (
-                <span className={`
-                  text-xs font-mono px-2 py-0.5 rounded-full border shrink-0
-                  ${riskColors[subtask.risk] || riskColors.medium}
-                `}>
-                  {subtask.risk}
+              <div className="flex flex-col gap-1 flex-1 min-w-0">
+                <span className="font-mono text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                  {task.file_path}
                 </span>
-              )}
+                <p className="font-body text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  {task.instruction}
+                </p>
+                <StatusDot status={task.status} size="xs" />
+              </div>
             </div>
-
-            {/* Instruction */}
-            {editingIndex === i ? (
-              <textarea
-                value={subtask.instruction}
-                onChange={e => updateSubtask(i, 'instruction', e.target.value)}
-                rows={4}
-                className="w-full bg-base border border-accent/30 rounded px-3 py-2 text-xs text-secondary font-mono resize-none focus:outline-none focus:border-accent"
-              />
-            ) : (
-              <p className="text-xs text-muted leading-relaxed">
-                {subtask.instruction}
-              </p>
-            )}
-
-            {/* Risk reason */}
-            {subtask.risk_reason && subtask.risk !== 'low' && (
-              <p className="text-xs text-muted/60 italic">
-                ⚠ {subtask.risk_reason}
-              </p>
-            )}
-
-            {/* Edit toggle */}
-            <button
-              onClick={() => setEditingIndex(editingIndex === i ? null : i)}
-              className="text-xs text-muted hover:text-accent transition-colors duration-150 self-start"
-            >
-              {editingIndex === i ? 'Done editing' : 'Edit instruction'}
-            </button>
-          </div>
+          </Card>
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="px-4 py-4 border-t border-border shrink-0 flex flex-col gap-3">
-        {error && (
-          <p className="text-xs text-danger">{error}</p>
-        )}
-        <div className="flex gap-3">
-          <Button
-            variant="primary"
-            size="md"
-            loading={approving}
-            onClick={handleApprove}
-            className="flex-1"
-          >
-            Approve Plan — Start Coding
-          </Button>
-        </div>
-        <p className="text-xs text-muted text-center">
-          You can edit any instruction above before approving
-        </p>
+      {/* Optional feedback */}
+      <div className="flex flex-col gap-1.5">
+        <label className="font-mono text-xs uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+          Feedback (optional)
+        </label>
+        <textarea
+          value={feedback}
+          onChange={e => setFeedback(e.target.value)}
+          placeholder="Any adjustments to the plan before approving?"
+          rows={3}
+          className="w-full px-3 py-2.5 rounded-md font-body text-sm resize-none transition-all duration-fast focus:outline-none"
+          style={{
+            background: 'var(--bg-surface)',
+            border:     '1px solid var(--bg-border)',
+            color:      'var(--text-primary)',
+            fontSize:   '16px',
+          }}
+          onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+          onBlur={e  => (e.currentTarget.style.borderColor = 'var(--bg-border)')}
+        />
+      </div>
+
+      {error && (
+        <Card variant="danger" padding="sm">
+          <p className="font-body text-sm" style={{ color: 'var(--error)' }}>{error}</p>
+        </Card>
+      )}
+
+      <div className="flex gap-3">
+        <Button variant="primary" size="md" loading={loading} onClick={handleApprove} fullWidth>
+          Approve & Start Coding
+        </Button>
+        <Button variant="danger" size="md" loading={loading} onClick={handleReject}>
+          Reject
+        </Button>
       </div>
     </div>
   )
