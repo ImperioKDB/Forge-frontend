@@ -1,9 +1,5 @@
 'use client'
 
-/**
- * FORGE — New Task Page
- */
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/supabase/api'
