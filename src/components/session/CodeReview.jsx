@@ -1,12 +1,5 @@
 'use client'
 
-/**
- * FORGE — Code Review component
- * Phase 1: Core App Shell & Session Flow
- *
- * Displays one subtask's code draft for approval.
- */
-
 import { useState } from 'react'
 import { apiFetch } from '@/lib/supabase/api'
 import Button from '@/components/ui/Button'
@@ -15,12 +8,12 @@ import StreamingOutput from './StreamingOutput'
 import { useToast } from '@/components/ui/Toast'
 
 export default function CodeReview({ session, onApproved, onPushComplete }) {
-  const { addToast }           = useToast()
-  const [loading, setLoading]  = useState(false)
-  const [error,   setError]    = useState(null)
+  const { addToast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const subtask = session?.subtasks?.find(t => t.status === 'awaiting_approval')
-  const draft   = subtask?.code_drafts?.[0]
+  const draft = subtask?.code_drafts?.[0]
 
   if (!subtask || !draft) return null
 
@@ -68,27 +61,16 @@ export default function CodeReview({ session, onApproved, onPushComplete }) {
   return (
     <div className="flex flex-col gap-4 px-4 py-6 max-w-3xl mx-auto">
       <div className="flex flex-col gap-1">
-        <h2
-          className="font-display font-semibold"
-          style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}
-        >
-          Review Code
-        </h2>
-        <p className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-          {subtask.file_path}
-        </p>
+        <h2 className="font-display font-semibold" style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Review Code</h2>
+        <p className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{subtask.file_path}</p>
       </div>
 
-      {/* Explanation */}
       {draft.explanation && (
         <Card variant="accent" padding="sm">
-          <p className="font-body text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            {draft.explanation}
-          </p>
+          <p className="font-body text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{draft.explanation}</p>
         </Card>
       )}
 
-      {/* Code output */}
       <StreamingOutput content={draft.content} done={true} />
 
       {error && (
@@ -98,12 +80,8 @@ export default function CodeReview({ session, onApproved, onPushComplete }) {
       )}
 
       <div className="flex gap-3">
-        <Button variant="primary" size="md" loading={loading} onClick={handleApprove} fullWidth>
-          Approve & Push
-        </Button>
-        <Button variant="danger" size="md" loading={loading} onClick={handleReject}>
-          Reject
-        </Button>
+        <Button variant="primary" size="md" loading={loading} onClick={handleApprove} fullWidth>Approve & Push</Button>
+        <Button variant="danger" size="md" loading={loading} onClick={handleReject}>Reject</Button>
       </div>
     </div>
   )
