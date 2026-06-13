@@ -1,12 +1,5 @@
 'use client'
 
-/**
- * FORGE — Plan Review component
- * Phase 1: Core App Shell & Session Flow
- *
- * Displays the agent's subtask plan. User can approve or reject.
- */
-
 import { useState } from 'react'
 import { apiFetch } from '@/lib/supabase/api'
 import Button from '@/components/ui/Button'
@@ -15,11 +8,10 @@ import StatusDot from '@/components/ui/StatusDot'
 import { useToast } from '@/components/ui/Toast'
 
 export default function PlanReview({ session, onApproved }) {
-  const { addToast }            = useToast()
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState(null)
+  const { addToast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [feedback, setFeedback] = useState('')
-
   const subtasks = session?.subtasks || []
 
   async function handleApprove() {
@@ -67,19 +59,14 @@ export default function PlanReview({ session, onApproved }) {
   return (
     <div className="flex flex-col gap-4 px-4 py-6 max-w-2xl mx-auto">
       <div className="flex flex-col gap-1">
-        <h2
-          className="font-display font-semibold"
-          style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}
-        >
+        <h2 className="font-display font-semibold" style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>
           Review the Plan
         </h2>
         <p className="font-body text-sm" style={{ color: 'var(--text-muted)' }}>
           Forge has broken your task into {subtasks.length} subtask{subtasks.length !== 1 ? 's' : ''}.
-          Approve to start coding, or reject to restart.
         </p>
       </div>
 
-      {/* Subtask list */}
       <div className="flex flex-col gap-2">
         {subtasks.map((task, i) => (
           <Card key={task.id} variant="default" padding="sm">
@@ -88,12 +75,8 @@ export default function PlanReview({ session, onApproved }) {
                 {String(i + 1).padStart(2, '0')}
               </span>
               <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <span className="font-mono text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
-                  {task.file_path}
-                </span>
-                <p className="font-body text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  {task.instruction}
-                </p>
+                <span className="font-mono text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{task.file_path}</span>
+                <p className="font-body text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{task.instruction}</p>
                 <StatusDot status={task.status} size="xs" />
               </div>
             </div>
@@ -101,25 +84,15 @@ export default function PlanReview({ session, onApproved }) {
         ))}
       </div>
 
-      {/* Optional feedback */}
       <div className="flex flex-col gap-1.5">
-        <label className="font-mono text-xs uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-          Feedback (optional)
-        </label>
+        <label className="font-mono text-xs uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Feedback (optional)</label>
         <textarea
           value={feedback}
           onChange={e => setFeedback(e.target.value)}
           placeholder="Any adjustments to the plan before approving?"
           rows={3}
-          className="w-full px-3 py-2.5 rounded-md font-body text-sm resize-none transition-all duration-fast focus:outline-none"
-          style={{
-            background: 'var(--bg-surface)',
-            border:     '1px solid var(--bg-border)',
-            color:      'var(--text-primary)',
-            fontSize:   '16px',
-          }}
-          onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
-          onBlur={e  => (e.currentTarget.style.borderColor = 'var(--bg-border)')}
+          className="w-full px-3 py-2.5 rounded-md font-body text-sm resize-none"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)', fontSize: '16px' }}
         />
       </div>
 
