@@ -4,8 +4,6 @@ import { useId } from "react"
 
 /**
  * FORGE — DotPattern
- * Phase 2: UI Polish
- *
  * SVG dot pattern background for decorative sections.
  * Uses CSS variables for theme consistency.
  */
