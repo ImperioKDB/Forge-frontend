@@ -5,8 +5,6 @@ import { motion } from "framer-motion"
 
 /**
  * FORGE — BouncingDots
- * Phase 2: UI Polish
- *
  * Animated loading indicator with configurable dots and optional message.
  * Uses Framer Motion for smooth spring physics.
  * Adapted to Forge design tokens (CSS variables).
