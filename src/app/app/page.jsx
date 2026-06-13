@@ -1,185 +1,141 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+/**
+ * FORGE — New Task Page
+ * Phase 1: Core App Shell & New Task Flow
+ *
+ * Mobile-first task submission form. Repo selector + model selector + textarea.
+ * Submits to POST /agent/start.
+ */
+
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiFetch } from '@/lib/supabase/api'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
 import RepoSelector from '@/components/ui/app/RepoSelector'
 import ModelSelector from '@/components/ui/app/ModelSelector'
+import { useToast } from '@/components/ui/Toast'
 
-const DEFAULT_PLANNER = 'anthropic/claude-3.5-sonnet'
-const DEFAULT_CODER   = 'poolside/laguna-m.1:free'
+const DEFAULT_PLANNER = 'openai/gpt-oss-120b:free'
+const DEFAULT_CODER   = 'qwen/qwen3-coder:free'
 
 export default function NewTaskPage() {
-  const router = useRouter()
+  const router        = useRouter()
+  const { addToast }  = useToast()
+  const [repo,        setRepo]        = useState(null)
+  const [task,        setTask]        = useState('')
+  const [planner,     setPlanner]     = useState(DEFAULT_PLANNER)
+  const [coder,       setCoder]       = useState(DEFAULT_CODER)
+  const [submitting,  setSubmitting]  = useState(false)
+  const [error,       setError]       = useState(null)
 
-  const [selectedRepo,  setSelectedRepo]  = useState(null)
-  const [plannerModel,  setPlannerModel]  = useState(DEFAULT_PLANNER)
-  const [coderModel,    setCoderModel]    = useState(DEFAULT_CODER)
-  const [task,          setTask]          = useState('')
-  const [submitting,    setSubmitting]    = useState(false)
-  const [error,         setError]         = useState(null)
-
-  // Poll repo indexing status
-  useEffect(() => {
-    if (!selectedRepo || selectedRepo.index_status === 'indexed') return
-    if (selectedRepo.index_status === 'failed') return
-    const interval = setInterval(async () => {
-      try {
-        const data    = await apiFetch('/repos')
-        const updated = data.repos.find(r => r.id === selectedRepo.id)
-        if (updated) {
-          setSelectedRepo(updated)
-          if (updated.index_status === 'indexed' || updated.index_status === 'failed') {
-            clearInterval(interval)
-          }
-        }
-      } catch { clearInterval(interval) }
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [selectedRepo?.id, selectedRepo?.index_status])
-
-  const indexing      = selectedRepo?.index_status === 'indexing' || selectedRepo?.index_status === 'pending'
-  const indexFailed   = selectedRepo?.index_status === 'failed'
-  const taskDisabled  = !selectedRepo || indexing || indexFailed
-  const disabledReason = !selectedRepo
-    ? 'Select a repository to continue'
-    : indexFailed
-    ? 'Indexing failed — please re-add the repository.'
-    : indexing
-    ? 'Indexing repository… this takes a minute'
-    : null
+  const canSubmit = repo && task.trim().length > 0 && !submitting
 
   async function handleSubmit() {
-    if (!selectedRepo || !task.trim() || submitting) return
+    if (!canSubmit) return
     setError(null)
     setSubmitting(true)
+
     try {
       const data = await apiFetch('/agent/start', {
         method: 'POST',
         body: JSON.stringify({
-          repo_id:      selectedRepo.id,
-          task:         task.trim(),
-          // FIX #1: backend expects camelCase, not snake_case
-          plannerModel: plannerModel,
-          coderModel:   coderModel,
+          repo_id:       repo.id,
+          task:          task.trim(),
+          planner_model: planner,
+          coder_model:   coder,
         }),
       })
+      addToast({ message: 'Task started — planning in progress', type: 'success' })
       router.push(`/app/session/${data.session_id}`)
     } catch (err) {
       setError(err.message)
+      addToast({ message: `Failed to start task: ${err.message}`, type: 'error', duration: 6000 })
       setSubmitting(false)
     }
   }
 
-  function handleKeyDown(e) {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !taskDisabled) {
-      handleSubmit()
-    }
-  }
-
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg-base)' }}>
-      {/* Page header */}
-      <div
-        className="px-6 py-5"
-        style={{ borderBottom: '1px solid var(--bg-border)' }}
-      >
-        <h1 className="font-display font-semibold" style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+    <div className="min-h-screen px-4 py-8 max-w-2xl mx-auto flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-col gap-1">
+        <h1
+          className="font-display font-bold"
+          style={{ fontSize: '1.5rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}
+        >
           New Task
         </h1>
-        <p className="font-body text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-          Describe what you want Forge to build or fix
+        <p className="font-body text-sm" style={{ color: 'var(--text-muted)' }}>
+          Describe what you want Forge to build, fix, or refactor.
         </p>
       </div>
 
-      {/* Content */}
-      <div className="px-6 py-6 flex flex-col gap-5">
+      {/* Repo Selector */}
+      <RepoSelector value={repo} onChange={setRepo} />
 
-        {/* Repo selector */}
-        <RepoSelector value={selectedRepo} onChange={setSelectedRepo} />
-
-        {/* Model selectors — side by side matching mockup */}
-        <ModelSelector
-          plannerModel={plannerModel}
-          coderModel={coderModel}
-          onPlannerChange={setPlannerModel}
-          onCoderChange={setCoderModel}
-        />
-
-        {/* Disabled reason */}
-        {disabledReason && (
-          <p className="font-body text-xs italic" style={{ color: 'var(--text-muted)' }}>
-            {disabledReason}
-          </p>
-        )}
-
-        {/* Task textarea — Run Forge button sits inside, bottom-right */}
-        <div
-          className="relative rounded-xl"
-          style={{
-            border: `1px solid ${taskDisabled ? 'var(--bg-border)' : 'var(--accent)'}`,
-            background: 'var(--bg-surface)',
-            transition: 'border-color 200ms ease',
-            opacity: taskDisabled ? 0.6 : 1,
-          }}
+      {/* Task textarea */}
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="task"
+          className="text-xs font-mono uppercase tracking-widest"
+          style={{ color: 'var(--text-muted)' }}
         >
-          <textarea
-            value={task}
-            onChange={e => setTask(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={taskDisabled}
-            rows={6}
-            placeholder={
-              taskDisabled
-                ? ''
-                : 'Describe what you want to build or fix…\n\n• Fix database user authentication bug\n• Add responsive design to profile page'
-            }
-            className="w-full resize-none font-body text-sm leading-relaxed"
-            style={{
-              background:    'transparent',
-              border:        'none',
-              outline:       'none',
-              padding:       '16px',
-              paddingBottom: '56px',
-              color:         'var(--text-primary)',
-            }}
-          />
-
-          {/* Run Forge button — bottom-right inside the box */}
-          <div className="absolute bottom-3 right-3">
-            <button
-              onClick={handleSubmit}
-              disabled={taskDisabled || !task.trim() || submitting}
-              className="font-body font-medium text-sm px-5 py-2 rounded-lg transition-all duration-fast"
-              style={{
-                background: (taskDisabled || !task.trim() || submitting)
-                  ? 'var(--bg-elevated)'
-                  : 'var(--accent)',
-                color: (taskDisabled || !task.trim() || submitting)
-                  ? 'var(--text-muted)'
-                  : '#fff',
-                cursor: (taskDisabled || !task.trim() || submitting) ? 'not-allowed' : 'pointer',
-                border: 'none',
-              }}
-            >
-              {submitting ? 'Starting…' : 'Run Forge'}
-            </button>
-          </div>
-        </div>
-
-        {/* Keyboard hint */}
-        {!taskDisabled && task.trim() && (
-          <p className="font-mono text-xs" style={{ color: 'var(--text-muted)', marginTop: '-8px' }}>
-            ⌘↵ to run
-          </p>
-        )}
-
-        {error && (
-          <p className="font-body text-sm" style={{ color: 'var(--error)' }}>{error}</p>
-        )}
+          Task
+        </label>
+        <textarea
+          id="task"
+          value={task}
+          onChange={e => setTask(e.target.value)}
+          placeholder="e.g. Add a dark mode toggle to the settings page. It should persist across sessions using localStorage."
+          rows={5}
+          className="w-full px-3 py-2.5 rounded-md font-body text-sm resize-none transition-all duration-fast focus:outline-none"
+          style={{
+            background:   'var(--bg-surface)',
+            border:       '1px solid var(--bg-border)',
+            color:        'var(--text-primary)',
+            fontSize:     '16px',
+          }}
+          onFocus={e  => (e.currentTarget.style.borderColor = 'var(--accent)')}
+          onBlur={e   => (e.currentTarget.style.borderColor = 'var(--bg-border)')}
+        />
+        <p className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+          {task.length} chars · Be specific — Forge reads your codebase before planning.
+        </p>
       </div>
+
+      {/* Model Selector */}
+      <ModelSelector
+        plannerModel={planner}
+        coderModel={coder}
+        onPlannerChange={setPlanner}
+        onCoderChange={setCoder}
+      />
+
+      {/* Error */}
+      {error && (
+        <Card variant="danger" padding="sm">
+          <p className="font-body text-sm" style={{ color: 'var(--error)' }}>{error}</p>
+        </Card>
+      )}
+
+      {/* Submit */}
+      <Button
+        variant="primary"
+        size="lg"
+        disabled={!canSubmit}
+        loading={submitting}
+        onClick={handleSubmit}
+        fullWidth
+      >
+        {submitting ? 'Starting…' : 'Run Forge →'}
+      </Button>
+
+      {!repo && (
+        <p className="font-mono text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+          Select a repository first
+        </p>
+      )}
     </div>
   )
 }
-
-
