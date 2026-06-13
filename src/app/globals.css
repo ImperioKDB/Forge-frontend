@@ -299,3 +299,40 @@ html, body {
 }
 
 
+
+
+/* === Forge UI fixes (appended by push_forge_ui_complete.py) === */
+
+@keyframes forge-skeleton {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+@keyframes forge-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes forge-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Mobile: sidebar is a CSS-transform overlay. Main content never shifts. */
+@media (max-width: 767px) {
+  main { margin-left: 0 !important; }
+}
+
+/* Hamburger: guaranteed touch target size + no tap delay */
+header button[aria-controls="app-sidebar"] {
+  min-width:    44px;
+  min-height:   44px;
+  touch-action: manipulation;
+}
+
+/* Desktop: slightly larger session title text for readability */
+@media (min-width: 1024px) {
+  #app-sidebar .font-body.text-xs.font-medium {
+    font-size: 0.8125rem;
+  }
+}
