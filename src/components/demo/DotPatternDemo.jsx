@@ -2,16 +2,9 @@
 
 import DotPattern from "@/components/ui/DotPattern"
 
-/**
- * FORGE — Demo: DotPattern usage
- * Decorative background pattern for cards, sections, or empty states.
- */
-
 export default function DotPatternDemo() {
   return (
     <div className="flex flex-col gap-8 p-8" style={{ background: "var(--bg-base)" }}>
-      
-      {/* Card with dot pattern background */}
       <div className="relative overflow-hidden rounded-lg border border-border p-6" style={{ background: "var(--bg-surface)" }}>
         <DotPattern width={20} height={20} className="opacity-[0.07]" />
         <div className="relative z-10">
@@ -19,8 +12,6 @@ export default function DotPatternDemo() {
           <p className="font-body text-sm text-muted">42 files indexed · Last updated 2h ago</p>
         </div>
       </div>
-
-      {/* Empty state with dense pattern */}
       <div className="relative overflow-hidden rounded-lg border border-border p-10 flex flex-col items-center text-center" style={{ background: "var(--bg-surface)" }}>
         <DotPattern width={8} height={8} cr={0.3} className="opacity-[0.1]" />
         <div className="relative z-10 flex flex-col items-center gap-3">
@@ -33,8 +24,6 @@ export default function DotPatternDemo() {
           <p className="font-mono text-xs text-muted">Start your first task to see it here</p>
         </div>
       </div>
-
-      {/* Hero section with subtle pattern */}
       <div className="relative overflow-hidden rounded-xl border border-border py-16 px-8" style={{ background: "var(--bg-elevated)" }}>
         <DotPattern width={32} height={32} className="opacity-[0.05]" />
         <div className="relative z-10 text-center">
