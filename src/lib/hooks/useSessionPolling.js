@@ -1,43 +1,67 @@
-'use client'
+/**
+ * FORGE -- useSessionPolling
+ * Fix: useRef for interval ID prevents stale-closure / multiple-interval
+ * bug on rapid sessionId changes. Terminal states stop polling immediately.
+ */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiFetch } from '@/lib/supabase/api'
 
+const TERMINAL_STATES = new Set(['done', 'failed', 'partial_success'])
+const POLL_MS = 3000
+
 export function useSessionPolling(sessionId) {
-  const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [session,  setSession]  = useState(null)
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState(null)
+  const intervalRef = useRef(null)
 
   const fetchSession = useCallback(async () => {
+    if (!sessionId) return
     try {
       const data = await apiFetch(`/agent/session/${sessionId}`)
       setSession(data.session)
-      return data.session
+      setError(null)
+
+      // Stop polling on terminal state
+      if (TERMINAL_STATES.has(data.session?.status)) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+      }
     } catch (err) {
       setError(err.message)
-      return null
     } finally {
       setLoading(false)
     }
   }, [sessionId])
 
+  const refetch = useCallback(() => {
+    fetchSession()
+  }, [fetchSession])
+
   useEffect(() => {
     if (!sessionId) return
 
+    // Clear any existing interval before starting a new one
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
+    setLoading(true)
     fetchSession()
 
-    // Poll every 3 seconds while session is active
-    const interval = setInterval(async () => {
-      const s = await fetchSession()
+    intervalRef.current = setInterval(fetchSession, POLL_MS)
 
-      // Stop polling when session reaches terminal state
-      if (s && ['done', 'failed', 'awaiting_approval', 'plan_review'].includes(s.status)) {
-        clearInterval(interval)
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
-    }, 3000)
-
-    return () => clearInterval(interval)
+    }
   }, [sessionId, fetchSession])
 
-  return { session, loading, error, refetch: fetchSession }
+  return { session, loading, error, refetch }
 }
