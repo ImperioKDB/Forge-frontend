@@ -1,7 +1,7 @@
 import './globals.css'
 import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { ToastProvider } from '@/components/ui/Toast'
 
-// ─── FONTS ────────────────────────────────────────────────────────
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700'],
@@ -23,7 +23,6 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 })
 
-// ─── METADATA ─────────────────────────────────────────────────────
 export const metadata = {
   title: 'Forge — Repository-aware AI coding agent',
   description:
@@ -36,24 +35,22 @@ export const metadata = {
   },
 }
 
-// ─── ROOT LAYOUT ──────────────────────────────────────────────────
 export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
       className={`
-        ${spaceGrotesk.variable}
-        ${plusJakarta.variable}
-        ${jetbrainsMono.variable}
+        \${spaceGrotesk.variable}
+        \${plusJakarta.variable}
+        \${jetbrainsMono.variable}
       `}
     >
       <body className="bg-base text-primary antialiased">
-        {/* Grain noise overlay — fixed, pointer-events-none, above everything */}
         <div className="noise-overlay" aria-hidden="true" />
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </body>
     </html>
   )
 }
-
-
