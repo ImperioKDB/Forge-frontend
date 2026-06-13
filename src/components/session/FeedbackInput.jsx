@@ -1,29 +1,65 @@
 'use client'
 
+/**
+ * FORGE -- FeedbackInput
+ * Rebuilt from scratch (original was binary/corrupted in codebase dump).
+ * Used inside CodeReview when user clicks "Request Changes".
+ * Calls POST /agent/feedback with { draft_id, feedback }.
+ */
+
 import { useState } from 'react'
+import { apiFetch } from '@/lib/supabase/api'
 import Button from '@/components/ui/Button'
 
-export default function FeedbackInput({ onSubmit, onCancel, loading }) {
-  const [feedback, setFeedback] = useState('')
+export default function FeedbackInput({ draftId, onSubmitted, onCancel }) {
+  const [feedback,   setFeedback]   = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error,      setError]      = useState(null)
 
-  function handleKeyDown(e) {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      if (feedback.trim() && !loading) {
-        onSubmit(feedback.trim())
-      }
-    }
-    if (e.key === 'Escape') {
-      onCancel()
+  const MAX_CHARS = 2000
+  const canSubmit = feedback.trim().length > 0 && feedback.length <= MAX_CHARS && !submitting
+
+  async function handleSubmit() {
+    if (!canSubmit) return
+    setError(null)
+    setSubmitting(true)
+    try {
+      await apiFetch('/agent/feedback', {
+        method: 'POST',
+        body: JSON.stringify({ draft_id: draftId, feedback: feedback.trim() }),
+      })
+      onSubmitted?.()
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
     }
   }
 
+  function handleKeyDown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault()
+      handleSubmit()
+    }
+    if (e.key === 'Escape') onCancel?.()
+  }
+
   return (
-    <div className="flex flex-col gap-3 p-4 bg-surface border border-accent/20 rounded animate-fade-in">
-      <div className="flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-        <span className="text-xs font-mono text-accent uppercase tracking-wider">
-          Feedback
+    <div
+      className="flex flex-col gap-3 p-4 rounded-lg"
+      style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)' }}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className="font-mono text-xs uppercase tracking-widest"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          Request changes
+        </span>
+        <span
+          className="font-mono text-xs"
+          style={{ color: feedback.length > MAX_CHARS ? 'var(--error)' : 'var(--text-muted)' }}
+        >
+          {feedback.length} / {MAX_CHARS}
         </span>
       </div>
 
@@ -31,35 +67,35 @@ export default function FeedbackInput({ onSubmit, onCancel, loading }) {
         value={feedback}
         onChange={e => setFeedback(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={
-          `Tell Forge what to fix or change…\n\nExamples:\n• Add null checks before accessing user.id\n• The function should return early if the array is empty\n• Use the existing errorHandler utility instead of throwing directly`
-        }
-        rows={5}
+        placeholder="Describe what needs to change. Be specific -- Forge will re-read the file and try again."
+        rows={4}
         autoFocus
-        className="w-full bg-base border border-border rounded px-3 py-2.5 text-sm text-secondary placeholder-muted resize-none focus:outline-none focus:border-accent focus:shadow-glow-sm font-sans leading-relaxed"
+        aria-label="Feedback for code revision"
+        className="w-full px-3 py-2.5 rounded-md font-body text-sm resize-none transition-all duration-150 focus:outline-none"
+        style={{
+          background: 'var(--bg-elevated)',
+          border:     '1px solid var(--bg-border)',
+          color:      'var(--text-primary)',
+          fontSize:   '16px',
+        }}
+        onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+        onBlur={e  => (e.currentTarget.style.borderColor = 'var(--bg-border)')}
       />
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted/60">⌘↵ to send · Esc to cancel</span>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => onSubmit(feedback.trim())}
-            loading={loading}
-            disabled={!feedback.trim()}
-          >
-            Send to Planner
-          </Button>
-        </div>
+      {error && (
+        <p className="font-mono text-xs" style={{ color: 'var(--error)' }}>{error}</p>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Button variant="primary" size="sm" disabled={!canSubmit} loading={submitting} onClick={handleSubmit}>
+          {submitting ? 'Sending...' : 'Send feedback'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
+          Cancel
+        </Button>
+        <span className="font-mono text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>
+          Cmd+Enter
+        </span>
       </div>
     </div>
   )
