@@ -1,10 +1,10 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import AppShell from '@/components/ui/app/AppShell'
+import { redirect } from 'next/navigation'
+import AppShellWrapper from '@/components/ui/app/AppShellWrapper'
 
 export default async function AppLayout({ children }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  return <AppShell>{children}</AppShell>
+  return <AppShellWrapper>{children}</AppShellWrapper>
 }
