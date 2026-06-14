@@ -99,7 +99,8 @@ function SignupForm() {
       return
     }
 
-    router.push('/login?signup=success')
+    // Redirect directly to confirm-email passing the email address
+    router.push(`/confirm-email?email=${encodeURIComponent(email)}`)
   }
 
   return (
@@ -205,7 +206,6 @@ function SignupForm() {
   )
 }
 
-// ─── PAGE ──────────────────────────────────────────────────────────
 export default function SignupPage() {
   return (
     <div
@@ -219,5 +219,3 @@ export default function SignupPage() {
     </div>
   )
 }
-
-
