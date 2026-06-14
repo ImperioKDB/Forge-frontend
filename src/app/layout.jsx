@@ -1,56 +1,47 @@
-import './globals.css'
-import { Space_Grotesk, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
-import { ToastProvider } from '@/components/ui/Toast'
+import { Fraunces, Geist, Geist_Mono } from "next/font/google"
+import "./globals.css"
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-space-grotesk',
-  display: 'swap',
+/**
+ * FORGE — root layout
+ *
+ * Three-font system:
+ *  - Fraunces  → display/voice (headlines, "this is a tool with a point of view")
+ *  - Geist     → UI/body text
+ *  - Geist Mono → reserved ONLY for things that are literally code:
+ *                  file paths, diffs, identifiers, status labels.
+ */
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
 })
 
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-jakarta',
-  display: 'swap',
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 })
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-jetbrains',
-  display: 'swap',
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  weight: ["400", "500", "600"],
+  display: "swap",
 })
 
 export const metadata = {
-  title: 'Forge — Repository-aware AI coding agent',
-  description:
-    'Forge understands your codebase deeply. It plans the work, writes the code, and you approve every step. Works on web, tablet, and mobile.',
-  icons: { icon: '/favicon.ico' },
-  openGraph: {
-    title: 'Forge',
-    description: 'Repository-aware AI coding agent. Plan, code, approve.',
-    type: 'website',
-  },
+  title: "Forge",
+  description: "A repository-aware coding agent that traces every file a change will touch before writing a line of code.",
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html
-      lang="en"
-      className={`
-        \${spaceGrotesk.variable}
-        \${plusJakarta.variable}
-        \${jetbrainsMono.variable}
-      `}
-    >
-      <body className="bg-base text-primary antialiased">
-        <div className="noise-overlay" aria-hidden="true" />
-        <ToastProvider>
-          {children}
-        </ToastProvider>
-      </body>
+    <html lang="en" className={`${fraunces.variable} ${geist.variable} ${geistMono.variable}`}>
+      <body className="font-body">{children}</body>
     </html>
   )
 }
