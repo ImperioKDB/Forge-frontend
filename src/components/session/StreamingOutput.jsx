@@ -1,92 +1,58 @@
-'use client'
+"use client"
 
-import { useEffect, useRef, useState } from 'react'
-import { useSSEStream } from '@/lib/hooks/useSSEStream'
+import { useEffect, useRef, useState } from "react"
+import { useSSEStream } from "@/lib/hooks/useSSEStream"
 
 function Cursor() {
   const [visible, setVisible] = useState(true)
   useEffect(() => {
-    const t = setInterval(() => setVisible(v => !v), 530)
+    const t = setInterval(() => setVisible((v) => !v), 530)
     return () => clearInterval(t)
   }, [])
-  return visible
-    ? <span className="inline-block w-2 h-3.5 ml-0.5 align-text-bottom" style={{ background: 'var(--accent)' }} />
-    : null
+  return visible ? <span className="ml-0.5 inline-block h-3.5 w-2 bg-accent align-text-bottom" /> : null
 }
 
 function RetryBanner({ retryCount, maxRetries }) {
   return (
-    <div
-      className="flex items-center gap-2 px-4 py-2 text-xs font-mono"
-      style={{
-        background: 'rgba(232,103,26,0.06)',
-        borderBottom: '1px solid rgba(232,103,26,0.15)',
-        color: 'var(--accent)',
-      }}
-    >
-      <span
-        className="w-1.5 h-1.5 rounded-full shrink-0"
-        style={{ background: 'var(--accent)', animation: 'forge-pulse 1.5s ease-in-out infinite' }}
-      />
-      Reconnecting... (attempt {retryCount}/{maxRetries})
+    <div className="flex items-center gap-2 border-b border-accent-line bg-accent-soft px-4 py-2 font-mono text-xs text-accent">
+      <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" />
+      Reconnecting… (attempt {retryCount}/{maxRetries})
     </div>
   )
 }
 
-export default function StreamingOutput({
-  streamUrl = null,
-  content:  staticContent = '',
-  done:     staticDone    = false,
-  title     = 'output',
-}) {
+/**
+ * FORGE — StreamingOutput
+ *
+ * The "file header" treatment now reads as a mono filepath-style
+ * label (matching the diff blocks elsewhere) rather than a faux
+ * macOS window with traffic-light dots — fits the "this is code,
+ * not chat" framing.
+ */
+export default function StreamingOutput({ streamUrl = null, content: staticContent = "", done: staticDone = false, title = "output" }) {
   const MAX_RETRIES = 10
 
-  const {
-    content:   streamedContent,
-    done:      streamedDone,
-    error:     streamError,
-    retrying,
-    retryCount,
-  } = useSSEStream(streamUrl)
+  const { content: streamedContent, done: streamedDone, error: streamError, retrying, retryCount } = useSSEStream(streamUrl)
 
-  const isLive    = Boolean(streamUrl)
-  const content   = isLive ? streamedContent : staticContent
-  const isDone    = isLive ? streamedDone    : staticDone
-  const error     = isLive ? streamError     : null
+  const isLive = Boolean(streamUrl)
+  const content = isLive ? streamedContent : staticContent
+  const isDone = isLive ? streamedDone : staticDone
+  const error = isLive ? streamError : null
 
   const bottomRef = useRef(null)
 
   useEffect(() => {
-    if (content) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
+    if (content) bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [content])
 
   return (
-    <div
-      className="relative flex flex-col rounded-lg overflow-hidden h-full"
-      style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)' }}
-    >
-      <div
-        className="flex items-center gap-2 px-4 py-2.5 border-b shrink-0"
-        style={{ borderColor: 'var(--bg-border)', background: 'var(--bg-elevated)' }}
-      >
-        <div className="flex gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--error)',   opacity: 0.6 }} />
-          <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--warning)', opacity: 0.6 }} />
-          <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--success)', opacity: 0.6 }} />
-        </div>
-        <span className="font-mono text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
-          {isDone ? title : (isLive ? 'streaming...' : title)}
-        </span>
-        {isLive && !isDone && !error && (
-          <span
-            className="ml-auto w-1.5 h-1.5 rounded-full"
-            style={{ background: 'var(--success)', animation: 'forge-pulse 2s ease-in-out infinite' }}
-          />
-        )}
+    <div className="relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-elevated px-4 py-2.5">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+        <span className="font-mono text-xs text-muted">{isDone ? title : isLive ? "streaming…" : title}</span>
+        {isLive && !isDone && !error && <span className="ml-auto h-1.5 w-1.5 animate-pulse rounded-full bg-success" />}
         {isDone && (
-          <svg className="ml-auto" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <svg className="ml-auto" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M2 6L5 9L10 3" stroke="var(--success)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
@@ -94,35 +60,26 @@ export default function StreamingOutput({
 
       {retrying && <RetryBanner retryCount={retryCount} maxRetries={MAX_RETRIES} />}
 
-      <div className="flex-1 px-4 py-4 overflow-y-auto overflow-x-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-auto px-4 py-4">
         {error && !retrying && (
-          <div
-            className="flex items-start gap-2 p-3 rounded mb-4"
-            style={{
-              background: 'rgba(239,68,68,0.06)',
-              border: '1px solid rgba(239,68,68,0.15)',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5">
-              <path d="M7 2L12.5 11H1.5L7 2Z" stroke="var(--error)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M7 5.5v3M7 10h.01" stroke="var(--error)" strokeWidth="1.2" strokeLinecap="round"/>
+          <div className="mb-4 flex items-start gap-2 rounded-md border border-error/20 bg-error-soft p-3">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
+              <path d="M7 2L12.5 11H1.5L7 2Z" stroke="var(--error)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M7 5.5v3M7 10h.01" stroke="var(--error)" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
-            <p className="font-mono text-xs" style={{ color: 'var(--error)' }}>{error}</p>
+            <p className="font-mono text-xs text-error">{error}</p>
           </div>
         )}
 
         {!content && !error && (
-          <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ background: 'var(--success)', animation: 'forge-pulse 2s ease-in-out infinite' }}
-            />
-            <span className="text-xs font-mono">Connecting to model...</span>
+          <div className="flex items-center gap-2 text-muted">
+            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-success" />
+            <span className="font-mono text-xs">Connecting to model…</span>
           </div>
         )}
 
         {content && (
-          <pre className="font-mono text-xs text-secondary leading-relaxed whitespace-pre-wrap break-words">
+          <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-secondary">
             {content}
             {!isDone && <Cursor />}
           </pre>
