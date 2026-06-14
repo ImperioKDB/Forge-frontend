@@ -2,6 +2,15 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react'
 
+/**
+ * FORGE — Toast
+ *
+ * Same provider/hook API as before. Visuals: removed shadow-glow-sm
+ * (no glow anywhere in the new design language); toasts are flat
+ * panels with a left-accent border in their status color, rendered
+ * on the elevated surface so they read against either theme.
+ */
+
 const ToastContext = createContext(null)
 
 export function useToast() {
@@ -26,11 +35,11 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  const bgColors = {
-    success: 'border-success/30 bg-success/5 text-success',
-    warning: 'border-warning/30 bg-warning/5 text-warning',
-    error: 'border-danger/30 bg-danger/5 text-danger',
-    info: 'border-info/30 bg-info/5 text-info',
+  const toneClasses = {
+    success: 'border-l-success text-success',
+    warning: 'border-l-warning text-warning',
+    error:   'border-l-error text-error',
+    info:    'border-l-info text-info',
   }
 
   const icons = {
@@ -43,21 +52,17 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+      <div className="fixed bottom-4 right-4 z-50 flex w-full max-w-sm flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`
-              pointer-events-auto flex items-start gap-3 p-3 rounded-lg border shadow-glow-sm
-              animate-slide-up transition-all duration-normal
-              \${bgColors[toast.type] || bgColors.success}
-            `}
+            className={`pointer-events-auto flex items-start gap-3 rounded-md border border-border border-l-2 bg-elevated p-3 shadow-panel animate-slide-up transition-all duration-normal ${toneClasses[toast.type] || toneClasses.success}`}
           >
-            <span className="font-mono font-bold text-sm shrink-0">{icons[toast.type]}</span>
-            <p className="font-body text-xs flex-1 leading-relaxed">{toast.message}</p>
+            <span className="shrink-0 font-mono text-sm font-bold">{icons[toast.type]}</span>
+            <p className="flex-1 font-body text-xs leading-relaxed text-primary">{toast.message}</p>
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-muted hover:text-primary transition-colors text-xs font-mono font-bold leading-none"
+              className="font-mono text-xs font-bold leading-none text-muted transition-colors hover:text-primary"
             >
               ✕
             </button>
