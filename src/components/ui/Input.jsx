@@ -10,10 +10,13 @@
  * surface prop
  * ------------
  * "workshop" (default) - dark bg-surface, text-primary, bg-border tokens.
- *                        Used everywhere inside /app/*.
  * "paper"              - light --paper bg, --ink text, --line border.
- *                        Used on marketing/auth pages (login, signup, etc.)
- *                        so inputs don't punch dark holes in the cream surface.
+ *                        For auth/marketing pages so inputs don't punch
+ *                        dark holes into the cream surface.
+ *
+ * Placeholder color on paper surface is handled via data-surface attribute
+ * on the wrapper div + a ::placeholder rule in globals.css. This avoids
+ * CSS.escape() which is browser-only and crashes Next.js SSR prerender.
  *
  * Usage:
  *   <Input surface="paper" label="Email" ... />
@@ -26,61 +29,48 @@ const Input = forwardRef(function Input(
   ref
 ) {
   const [showPassword, setShowPassword] = useState(false)
-  const inputId       = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined)
-  const isPassword    = type === "password"
-  const resolvedType  = isPassword ? (showPassword ? "text" : "password") : type
-  const isPaper       = surface === "paper"
+  const inputId      = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined)
+  const isPassword   = type === "password"
+  const resolvedType = isPassword ? (showPassword ? "text" : "password") : type
+  const isPaper      = surface === "paper"
 
-  // Token sets per surface
-  const tokens = isPaper
+  const labelStyle = isPaper
+    ? { color: "var(--ink-soft)" }
+    : undefined
+
+  // Paper input: bg, text, border all via inline style (CSS vars not
+  // reachable via Tailwind color classes for paper tokens).
+  // Workshop input: keep original Tailwind classes, no inline style.
+  const inputClassName = isPaper
+    ? `w-full min-h-[44px] rounded-md border px-3 py-2.5 font-body text-sm transition-colors duration-fast focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${isPassword ? "pr-10" : ""} ${className}`
+    : `w-full min-h-[44px] rounded-md border bg-surface px-3 py-2.5 font-body text-sm text-primary transition-colors duration-fast placeholder:text-muted focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${error ? "border-error focus-visible:outline-error" : "border-border focus:border-accent-line"} ${isPassword ? "pr-10" : ""} ${className}`
+
+  const inputStyle = isPaper
     ? {
-        label:       "font-mono text-[11px] uppercase tracking-widest",
-        labelColor:  "var(--ink-soft)",
-        inputBase:   "w-full min-h-[44px] rounded-md border px-3 py-2.5 font-body text-sm transition-colors duration-fast focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
-        inputBg:     "var(--paper)",
-        inputColor:  "var(--ink)",
-        inputBorder: error ? "var(--error)" : "var(--line)",
-        focusBorder: "var(--accent-line)",
-        placeholder: "var(--ink-faint)",
-        toggleColor: "var(--ink-soft)",
-        hintColor:   "var(--ink-faint)",
-      }
-    : {
-        label:       "font-mono text-[11px] uppercase tracking-widest text-muted",
-        labelColor:  null,
-        inputBase:   "w-full min-h-[44px] rounded-md border bg-surface px-3 py-2.5 font-body text-sm text-primary transition-colors duration-fast placeholder:text-muted focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
-        inputBg:     null,
-        inputColor:  null,
-        inputBorder: null,
-        focusBorder: null,
-        placeholder: null,
-        toggleColor: null,
-        hintColor:   null,
-      }
-
-  // For workshop surface, keep original Tailwind class-based border logic
-  const workshopBorderClass = !isPaper
-    ? (error ? "border-error focus-visible:outline-error" : "border-border focus:border-accent-line")
-    : ""
-
-  // For paper surface, drive borders via inline style (CSS vars not in Tailwind border-* classes)
-  const paperInputStyle = isPaper
-    ? {
-        fontSize:          "16px",
-        background:        tokens.inputBg,
-        color:             tokens.inputColor,
-        borderColor:       tokens.inputBorder,
-        caretColor:        "var(--accent)",
+        fontSize:    "16px",
+        background:  "var(--paper)",
+        color:       "var(--ink)",
+        borderColor: error ? "var(--error)" : "var(--line)",
       }
     : { fontSize: "16px" }
 
+  const toggleStyle = isPaper
+    ? { color: "var(--ink-soft)" }
+    : undefined
+
+  const hintStyle = isPaper
+    ? { color: "var(--ink-faint)" }
+    : { color: "var(--text-muted)" }
+
   return (
-    <div className="flex flex-col gap-1.5">
+    // data-surface drives the ::placeholder rule in globals.css
+    // SSR-safe: no JS APIs, just a data attribute on a div
+    <div className="flex flex-col gap-1.5" data-surface={isPaper ? "paper" : undefined}>
       {label && (
         <label
           htmlFor={inputId}
-          className={tokens.label}
-          style={tokens.labelColor ? { color: tokens.labelColor } : undefined}
+          className="font-mono text-[11px] uppercase tracking-widest"
+          style={labelStyle ?? { color: "var(--text-muted)" }}
         >
           {label}
         </label>
@@ -91,10 +81,8 @@ const Input = forwardRef(function Input(
           ref={ref}
           id={inputId}
           type={resolvedType}
-          className={`${tokens.inputBase} ${workshopBorderClass} ${isPassword ? "pr-10" : ""} ${className}`}
-          style={paperInputStyle}
-          // Placeholder color for paper - CSS variable can't be set via Tailwind placeholder: class
-          // so we inject it as a style tag scoped to this input's id when on paper surface
+          className={inputClassName}
+          style={inputStyle}
           aria-invalid={!!error}
           aria-describedby={
             [hint && `${inputId}-hint`, error && `${inputId}-error`]
@@ -103,17 +91,12 @@ const Input = forwardRef(function Input(
           {...props}
         />
 
-        {/* Paper surface placeholder color override - scoped, no global pollution */}
-        {isPaper && inputId && (
-          <style>{`#${CSS.escape(inputId)}::placeholder { color: ${tokens.placeholder}; }`}</style>
-        )}
-
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 transition-colors duration-fast focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
-            style={{ color: tokens.toggleColor || undefined }}
+            style={toggleStyle ?? { color: "var(--text-muted)" }}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? (
@@ -136,21 +119,13 @@ const Input = forwardRef(function Input(
       </div>
 
       {hint && !error && (
-        <p
-          id={`${inputId}-hint`}
-          className="text-xs leading-relaxed"
-          style={isPaper ? { color: tokens.hintColor } : { color: "var(--text-muted)" }}
-        >
+        <p id={`${inputId}-hint`} className="text-xs leading-relaxed" style={hintStyle}>
           {hint}
         </p>
       )}
 
       {error && (
-        <p
-          id={`${inputId}-error`}
-          className="flex items-center gap-1.5 text-xs text-error"
-          role="alert"
-        >
+        <p id={`${inputId}-error`} className="flex items-center gap-1.5 text-xs text-error" role="alert">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
             <path d="M6 4v2.5M6 8h.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
