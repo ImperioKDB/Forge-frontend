@@ -1,56 +1,35 @@
 /**
- * FORGE — Card component
- * Phase 0: Design System Foundation
+ * FORGE — Card
  *
- * Variants:
- * - default: bg-surface + border
- * - elevated: bg-elevated + border
- * - glow: accent border glow on hover
- * - accent: left accent border (for callouts, analysis panels)
- * - ghost: transparent bg
+ * Default variant uses the signature double-rule "title block" frame
+ * (.panel-rule from globals.css). Status variants use a left accent
+ * border in the matching status color — no glow on hover.
  */
-
-export default function Card({
-  children,
-  variant = 'default',
-  className = '',
-  padding = 'md',
-  as: Tag = 'div',
-  ...props
-}) {
+export default function Card({ children, variant = "default", className = "", padding = "md", as: Tag = "div", ...props }) {
   const variants = {
-    default: 'bg-surface border border-border',
-    elevated: 'bg-elevated border border-border',
-    glow: 'bg-surface border border-border hover:border-accent/40 hover:shadow-glow-sm hover:-translate-y-0.5',
-    accent: 'bg-surface border border-border border-l-2 border-l-accent',
-    info: 'bg-surface border border-border border-l-2 border-l-info',
-    success: 'bg-surface border border-border border-l-2 border-l-success',
-    warning: 'bg-surface border border-border border-l-2 border-l-warning',
-    danger: 'bg-surface border border-error/20 bg-error/5',
-    ghost: 'bg-transparent border border-border',
+    default: "panel-rule bg-surface",
+    elevated: "bg-elevated border border-border rounded-lg",
+    flat: "bg-surface border border-border rounded-lg",
+    accent: "bg-surface border border-border border-l-2 border-l-accent rounded-lg",
+    info: "bg-surface border border-border border-l-2 border-l-info rounded-lg",
+    success: "bg-surface border border-border border-l-2 border-l-success rounded-lg",
+    warning: "bg-surface border border-border border-l-2 border-l-warning rounded-lg",
+    danger: "bg-error-soft border border-error/20 rounded-lg",
+    ghost: "bg-transparent border border-border rounded-lg",
   }
 
   const paddings = {
-    none: '',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-6',
+    none: "",
+    sm: "p-3",
+    md: "p-4",
+    lg: "p-6",
   }
 
+  const radius = variant === "default" ? "rounded-md" : ""
+
   return (
-    <Tag
-      className={`
-        rounded-lg
-        transition-all duration-normal
-        ${variants[variant] ?? variants.default}
-        ${paddings[padding] ?? paddings.md}
-        ${className}
-      `}
-      {...props}
-    >
-      {children}
+    <Tag className={`relative ${radius} transition-colors duration-normal ${variants[variant] ?? variants.default} ${paddings[padding] ?? paddings.md} ${className}`} {...props}>
+      <div className="relative z-[1]">{children}</div>
     </Tag>
   )
 }
-
-
