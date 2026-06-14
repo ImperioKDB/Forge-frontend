@@ -320,3 +320,14 @@ body {
   }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* ─── PAPER SURFACE INPUT PLACEHOLDER ───────────────────────────────────────
+   Placeholder color for inputs rendered on paper surfaces (auth/marketing
+   pages). Driven by data-surface="paper" on the Input component's wrapper
+   div - set by the surface="paper" prop. SSR-safe (no JS, pure CSS).
+   This is the only correct way to set ::placeholder color via CSS variable
+   without using CSS.escape() or scoped <style> tags. */
+[data-surface="paper"] input::placeholder {
+  color: var(--ink-faint);
+  opacity: 1;
+}
