@@ -2,18 +2,8 @@
 
 /**
  * FORGE - Login Page
- * Phase 3: paper-themed auth (marketing-adjacent, light surfaces).
- *
- * Split layout: left panel (GraphFragment + product voice)
- *               right panel (form)
- * Left hidden on mobile.
- *
- * Rules enforced:
- *  - paper/ink/line tokens only (no bg-base/bg-surface/workshop tokens)
- *  - Logo component (ForgeWordmark is dead code - do not import it)
- *  - No glow, no radial-gradient decoration
- *  - GraphFragment variant="settled" on left panel (subtle, not a second hero)
- *  - Fraunces for headings, Geist for body, mono only for technical strings
+ * Phase 3: paper-themed auth. Uses surface="paper" on Input + Button
+ * so fields render on the cream surface correctly.
  */
 
 import { useState, useEffect, Suspense } from 'react'
@@ -24,22 +14,15 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import GraphFragment from '@/components/graph/GraphFragment'
 
-// ─── LEFT PANEL ────────────────────────────────────────────────────────────
 function LeftPanel() {
   return (
     <div
       className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden"
-      style={{
-        background: 'var(--paper-2)',
-        borderRight: '1px solid var(--line)',
-      }}
+      style={{ background: 'var(--paper-2)', borderRight: '1px solid var(--line)' }}
     >
-      {/* Blueprint grid - paper surface motif, no forge-grid */}
       <div className="blueprint-grid" aria-hidden="true" />
-
       <Logo size="sm" className="relative z-10" style={{ color: 'var(--ink)' }} />
 
-      {/* GraphFragment: settled variant - calm, reads as "done" not a hero */}
       <div className="relative z-10 w-full max-w-[280px] mx-auto opacity-80">
         <GraphFragment variant="settled" />
       </div>
@@ -47,26 +30,16 @@ function LeftPanel() {
       <div className="relative z-10 flex flex-col gap-5">
         <h2
           className="font-display font-semibold leading-tight"
-          style={{
-            fontSize: 'clamp(1.4rem, 2vw, 1.9rem)',
-            letterSpacing: '-0.02em',
-            color: 'var(--ink)',
-          }}
+          style={{ fontSize: 'clamp(1.4rem, 2vw, 1.9rem)', letterSpacing: '-0.02em', color: 'var(--ink)' }}
         >
           Understands your codebase.{' '}
-          <em className="italic not-italic" style={{ color: 'var(--accent)' }}>
+          <em className="italic" style={{ color: 'var(--accent)' }}>
             Plans. Codes. Ships.
           </em>
         </h2>
-        <p
-          className="font-body text-sm leading-relaxed"
-          style={{ color: 'var(--ink-soft)', maxWidth: '34ch' }}
-        >
-          Repository-aware AI that reads every import, export, and dependency
-          before writing a single line.
+        <p className="font-body text-sm leading-relaxed" style={{ color: 'var(--ink-soft)', maxWidth: '34ch' }}>
+          Repository-aware AI that reads every import, export, and dependency before writing a single line.
         </p>
-
-        {/* Numbered ledger steps - matches landing page pattern */}
         <div className="flex flex-col gap-2.5 mt-1">
           {[
             'Connect your GitHub repo',
@@ -76,31 +49,22 @@ function LeftPanel() {
             'Merge your branch',
           ].map((step, i) => (
             <div key={step} className="flex items-center gap-3">
-              <span
-                className="font-mono text-xs w-5 shrink-0"
-                style={{ color: 'var(--accent)', opacity: 0.6 }}
-              >
+              <span className="font-mono text-xs w-5 shrink-0" style={{ color: 'var(--accent)', opacity: 0.6 }}>
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <span className="font-body text-xs" style={{ color: 'var(--ink-faint)' }}>
-                {step}
-              </span>
+              <span className="font-body text-xs" style={{ color: 'var(--ink-faint)' }}>{step}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <p
-        className="font-mono text-xs relative z-10"
-        style={{ color: 'var(--ink-faint)' }}
-      >
+      <p className="font-mono text-xs relative z-10" style={{ color: 'var(--ink-faint)' }}>
         Works on web, tablet, and mobile.
       </p>
     </div>
   )
 }
 
-// ─── FORM ──────────────────────────────────────────────────────────────────
 function LoginForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -113,48 +77,31 @@ function LoginForm() {
   const [notice,   setNotice]   = useState(null)
 
   useEffect(() => {
-    if (searchParams.get('signup') === 'success') {
-      setNotice('Account created - sign in to continue.')
-    }
-    if (searchParams.get('error') === 'auth_failed') {
-      setError('Authentication failed. Please try again.')
-    }
+    if (searchParams.get('signup') === 'success') setNotice('Account created - sign in to continue.')
+    if (searchParams.get('error') === 'auth_failed') setError('Authentication failed. Please try again.')
   }, [searchParams])
 
   async function handleLogin(e) {
     e.preventDefault()
     setError(null)
     setLoading(true)
-
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-
     if (error) {
-      setError(
-        error.message === 'Invalid login credentials'
-          ? 'Email or password is incorrect.'
-          : error.message
-      )
+      setError(error.message === 'Invalid login credentials' ? 'Email or password is incorrect.' : error.message)
       setLoading(false)
       return
     }
-
     router.push('/app')
     router.refresh()
   }
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-8">
-
-      {/* Header */}
       <div className="flex flex-col gap-2">
-        {/* Mobile-only logo */}
         <div className="lg:hidden mb-2">
           <Logo size="sm" style={{ color: 'var(--ink)' }} />
         </div>
-        <h1
-          className="font-display font-semibold"
-          style={{ fontSize: '1.5rem', letterSpacing: '-0.02em', color: 'var(--ink)' }}
-        >
+        <h1 className="font-display font-semibold" style={{ fontSize: '1.5rem', letterSpacing: '-0.02em', color: 'var(--ink)' }}>
           Welcome back
         </h1>
         <p className="font-body text-sm" style={{ color: 'var(--ink-soft)' }}>
@@ -162,90 +109,36 @@ function LoginForm() {
         </p>
       </div>
 
-      {/* Notice (signup success) */}
       {notice && (
-        <div
-          className="px-4 py-3 rounded-md text-xs font-body"
-          style={{
-            background: 'var(--success-soft)',
-            border: '1px solid rgba(111,191,139,0.3)',
-            color: 'var(--success)',
-          }}
-        >
+        <div className="px-4 py-3 rounded-md text-xs font-body" style={{ background: 'var(--success-soft)', border: '1px solid rgba(111,191,139,0.3)', color: 'var(--success)' }}>
           {notice}
         </div>
       )}
 
-      {/* Error block - matches RepoConnectPanel error pattern */}
       {error && (
-        <div
-          className="panel-rule px-4 py-3 flex flex-col gap-1"
-          style={{
-            background: 'var(--error-soft)',
-            borderColor: 'rgba(224,139,125,0.3)',
-          }}
-          role="alert"
-        >
-          <p className="font-body text-xs font-medium" style={{ color: 'var(--error)' }}>
-            Sign-in failed
-          </p>
-          <p className="font-body text-xs" style={{ color: 'var(--ink-soft)' }}>
-            {error}
-          </p>
+        <div className="panel-rule px-4 py-3 flex flex-col gap-1" style={{ background: 'var(--error-soft)', borderColor: 'rgba(224,139,125,0.3)' }} role="alert">
+          <p className="font-body text-xs font-medium" style={{ color: 'var(--error)' }}>Sign-in failed</p>
+          <p className="font-body text-xs" style={{ color: 'var(--ink-soft)' }}>{error}</p>
         </div>
       )}
 
-      {/* Form - no <form> onSubmit issues; kept as form for a11y */}
       <form onSubmit={handleLogin} className="flex flex-col gap-4">
-        <Input
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-          autoComplete="email"
-        />
-        <Input
-          label="Password"
-          type="password"
-          placeholder="Your password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-          autoComplete="current-password"
-        />
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          loading={loading}
-          disabled={!email || !password}
-          fullWidth
-          className="mt-2"
-        >
+        <Input surface="paper" label="Email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" />
+        <Input surface="paper" label="Password" type="password" placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
+        <Button surface="paper" type="submit" variant="primary" size="lg" loading={loading} disabled={!email || !password} fullWidth className="mt-2">
           Sign In
         </Button>
       </form>
 
-      {/* Divider */}
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px" style={{ background: 'var(--line)' }} />
-        <span className="font-mono text-xs" style={{ color: 'var(--ink-faint)' }}>
-          FORGE
-        </span>
+        <span className="font-mono text-xs" style={{ color: 'var(--ink-faint)' }}>FORGE</span>
         <div className="flex-1 h-px" style={{ background: 'var(--line)' }} />
       </div>
 
-      {/* Signup link */}
       <p className="font-body text-xs text-center" style={{ color: 'var(--ink-soft)' }}>
         Don&apos;t have an account?{' '}
-        <button
-          type="button"
-          onClick={() => router.push('/signup')}
-          className="transition-colors duration-fast hover:underline"
-          style={{ color: 'var(--accent)' }}
-        >
+        <button type="button" onClick={() => router.push('/signup')} className="transition-colors duration-fast hover:underline" style={{ color: 'var(--accent)' }}>
           Create one
         </button>
       </p>
@@ -253,20 +146,11 @@ function LoginForm() {
   )
 }
 
-// ─── PAGE ───────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   return (
-    <div
-      className="min-h-screen grid lg:grid-cols-2"
-      style={{ background: 'var(--paper)' }}
-    >
+    <div className="min-h-screen grid lg:grid-cols-2" style={{ background: 'var(--paper)' }}>
       <LeftPanel />
-
-      {/* Right panel - paper surface */}
-      <div
-        className="flex items-center justify-center px-8 py-16"
-        style={{ background: 'var(--paper)' }}
-      >
+      <div className="flex items-center justify-center px-8 py-16" style={{ background: 'var(--paper)' }}>
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>
