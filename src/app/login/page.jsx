@@ -1,51 +1,73 @@
 'use client'
 
 /**
- * FORGE — Login Page
- * Phase 2: Auth & Onboarding
+ * FORGE - Login Page
+ * Phase 3: paper-themed auth (marketing-adjacent, light surfaces).
  *
- * Split layout: left panel (product context) · right panel (form)
- * Left hidden on mobile. No marketing copy. Just get them in.
+ * Split layout: left panel (GraphFragment + product voice)
+ *               right panel (form)
+ * Left hidden on mobile.
+ *
+ * Rules enforced:
+ *  - paper/ink/line tokens only (no bg-base/bg-surface/workshop tokens)
+ *  - Logo component (ForgeWordmark is dead code - do not import it)
+ *  - No glow, no radial-gradient decoration
+ *  - GraphFragment variant="settled" on left panel (subtle, not a second hero)
+ *  - Fraunces for headings, Geist for body, mono only for technical strings
  */
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import ForgeWordmark from '@/components/ui/ForgeWordmark'
+import Logo from '@/components/ui/Logo'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import GraphFragment from '@/components/graph/GraphFragment'
 
-// ─── LEFT PANEL ────────────────────────────────────────────────────
+// ─── LEFT PANEL ────────────────────────────────────────────────────────────
 function LeftPanel() {
   return (
     <div
       className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden"
-      style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--bg-border)' }}
+      style={{
+        background: 'var(--paper-2)',
+        borderRight: '1px solid var(--line)',
+      }}
     >
-      {/* Grid */}
-      <div className="forge-grid" aria-hidden="true" />
+      {/* Blueprint grid - paper surface motif, no forge-grid */}
+      <div className="blueprint-grid" aria-hidden="true" />
 
-      <ForgeWordmark size="sm" />
+      <Logo size="sm" className="relative z-10" style={{ color: 'var(--ink)' }} />
 
-      <div className="relative z-10 flex flex-col gap-6">
+      {/* GraphFragment: settled variant - calm, reads as "done" not a hero */}
+      <div className="relative z-10 w-full max-w-[280px] mx-auto opacity-80">
+        <GraphFragment variant="settled" />
+      </div>
+
+      <div className="relative z-10 flex flex-col gap-5">
         <h2
-          className="font-display font-bold leading-tight"
-          style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.2rem)', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}
+          className="font-display font-semibold leading-tight"
+          style={{
+            fontSize: 'clamp(1.4rem, 2vw, 1.9rem)',
+            letterSpacing: '-0.02em',
+            color: 'var(--ink)',
+          }}
         >
-          Understands your codebase.
-          <span style={{ color: 'var(--accent)', display: 'block' }}>
+          Understands your codebase.{' '}
+          <em className="italic not-italic" style={{ color: 'var(--accent)' }}>
             Plans. Codes. Ships.
-          </span>
+          </em>
         </h2>
         <p
           className="font-body text-sm leading-relaxed"
-          style={{ color: 'var(--text-secondary)', maxWidth: '32ch' }}
+          style={{ color: 'var(--ink-soft)', maxWidth: '34ch' }}
         >
-          Repository-aware AI that reads every import, export, and dependency before writing a single line.
+          Repository-aware AI that reads every import, export, and dependency
+          before writing a single line.
         </p>
 
-        {/* Mini steps */}
-        <div className="flex flex-col gap-3 mt-2">
+        {/* Numbered ledger steps - matches landing page pattern */}
+        <div className="flex flex-col gap-2.5 mt-1">
           {[
             'Connect your GitHub repo',
             'Describe what you want',
@@ -55,15 +77,12 @@ function LeftPanel() {
           ].map((step, i) => (
             <div key={step} className="flex items-center gap-3">
               <span
-                className="font-mono text-xs w-5"
-                style={{ color: 'rgba(232,103,26,0.5)' }}
+                className="font-mono text-xs w-5 shrink-0"
+                style={{ color: 'var(--accent)', opacity: 0.6 }}
               >
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <span
-                className="font-body text-xs"
-                style={{ color: 'var(--text-muted)' }}
-              >
+              <span className="font-body text-xs" style={{ color: 'var(--ink-faint)' }}>
                 {step}
               </span>
             </div>
@@ -73,7 +92,7 @@ function LeftPanel() {
 
       <p
         className="font-mono text-xs relative z-10"
-        style={{ color: 'var(--text-muted)' }}
+        style={{ color: 'var(--ink-faint)' }}
       >
         Works on web, tablet, and mobile.
       </p>
@@ -81,7 +100,7 @@ function LeftPanel() {
   )
 }
 
-// ─── FORM ──────────────────────────────────────────────────────────
+// ─── FORM ──────────────────────────────────────────────────────────────────
 function LoginForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -95,7 +114,7 @@ function LoginForm() {
 
   useEffect(() => {
     if (searchParams.get('signup') === 'success') {
-      setNotice('Account created — sign in to continue.')
+      setNotice('Account created - sign in to continue.')
     }
     if (searchParams.get('error') === 'auth_failed') {
       setError('Authentication failed. Please try again.')
@@ -125,30 +144,31 @@ function LoginForm() {
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-8">
+
       {/* Header */}
       <div className="flex flex-col gap-2">
-        {/* Mobile-only wordmark */}
+        {/* Mobile-only logo */}
         <div className="lg:hidden mb-2">
-          <ForgeWordmark size="sm" />
+          <Logo size="sm" style={{ color: 'var(--ink)' }} />
         </div>
         <h1
-          className="font-display font-bold"
-          style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}
+          className="font-display font-semibold"
+          style={{ fontSize: '1.5rem', letterSpacing: '-0.02em', color: 'var(--ink)' }}
         >
           Welcome back
         </h1>
-        <p className="font-body text-sm" style={{ color: 'var(--text-muted)' }}>
+        <p className="font-body text-sm" style={{ color: 'var(--ink-soft)' }}>
           Sign in to your Forge account.
         </p>
       </div>
 
-      {/* Notice */}
+      {/* Notice (signup success) */}
       {notice && (
         <div
-          className="px-4 py-3 rounded-lg text-xs font-body"
+          className="px-4 py-3 rounded-md text-xs font-body"
           style={{
-            background: 'rgba(45,212,191,0.08)',
-            border: '1px solid rgba(45,212,191,0.2)',
+            background: 'var(--success-soft)',
+            border: '1px solid rgba(111,191,139,0.3)',
             color: 'var(--success)',
           }}
         >
@@ -156,7 +176,26 @@ function LoginForm() {
         </div>
       )}
 
-      {/* Form */}
+      {/* Error block - matches RepoConnectPanel error pattern */}
+      {error && (
+        <div
+          className="panel-rule px-4 py-3 flex flex-col gap-1"
+          style={{
+            background: 'var(--error-soft)',
+            borderColor: 'rgba(224,139,125,0.3)',
+          }}
+          role="alert"
+        >
+          <p className="font-body text-xs font-medium" style={{ color: 'var(--error)' }}>
+            Sign-in failed
+          </p>
+          <p className="font-body text-xs" style={{ color: 'var(--ink-soft)' }}>
+            {error}
+          </p>
+        </div>
+      )}
+
+      {/* Form - no <form> onSubmit issues; kept as form for a11y */}
       <form onSubmit={handleLogin} className="flex flex-col gap-4">
         <Input
           label="Email"
@@ -167,7 +206,6 @@ function LoginForm() {
           required
           autoComplete="email"
         />
-
         <Input
           label="Password"
           type="password"
@@ -176,9 +214,7 @@ function LoginForm() {
           onChange={e => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          error={error}
         />
-
         <Button
           type="submit"
           variant="primary"
@@ -194,26 +230,21 @@ function LoginForm() {
 
       {/* Divider */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px" style={{ background: 'var(--bg-border)' }} />
-        <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex-1 h-px" style={{ background: 'var(--line)' }} />
+        <span className="font-mono text-xs" style={{ color: 'var(--ink-faint)' }}>
           FORGE
         </span>
-        <div className="flex-1 h-px" style={{ background: 'var(--bg-border)' }} />
+        <div className="flex-1 h-px" style={{ background: 'var(--line)' }} />
       </div>
 
       {/* Signup link */}
-      <p
-        className="font-body text-xs text-center"
-        style={{ color: 'var(--text-muted)' }}
-      >
-        Don't have an account?{' '}
+      <p className="font-body text-xs text-center" style={{ color: 'var(--ink-soft)' }}>
+        Don&apos;t have an account?{' '}
         <button
           type="button"
           onClick={() => router.push('/signup')}
-          className="transition-colors duration-fast"
+          className="transition-colors duration-fast hover:underline"
           style={{ color: 'var(--accent)' }}
-          onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-          onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
         >
           Create one
         </button>
@@ -222,17 +253,20 @@ function LoginForm() {
   )
 }
 
-// ─── PAGE ──────────────────────────────────────────────────────────
+// ─── PAGE ───────────────────────────────────────────────────────────────────
 export default function LoginPage() {
   return (
     <div
       className="min-h-screen grid lg:grid-cols-2"
-      style={{ background: 'var(--bg-base)' }}
+      style={{ background: 'var(--paper)' }}
     >
       <LeftPanel />
 
-      {/* Right panel */}
-      <div className="flex items-center justify-center px-8 py-16">
+      {/* Right panel - paper surface */}
+      <div
+        className="flex items-center justify-center px-8 py-16"
+        style={{ background: 'var(--paper)' }}
+      >
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>
@@ -240,5 +274,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
-
