@@ -1,25 +1,87 @@
 "use client"
 
 /**
- * FORGE — Input
+ * FORGE - Input
  *
  * Focus ring uses the accent color via outline (no box-shadow glow).
  * All other behavior (password toggle, hints, errors, 16px font to
- * prevent iOS zoom, 44px touch target) preserved from prior version.
+ * prevent iOS zoom, 44px touch target) preserved.
+ *
+ * surface prop
+ * ------------
+ * "workshop" (default) - dark bg-surface, text-primary, bg-border tokens.
+ *                        Used everywhere inside /app/*.
+ * "paper"              - light --paper bg, --ink text, --line border.
+ *                        Used on marketing/auth pages (login, signup, etc.)
+ *                        so inputs don't punch dark holes in the cream surface.
+ *
+ * Usage:
+ *   <Input surface="paper" label="Email" ... />
  */
 
 import { forwardRef, useState } from "react"
 
-const Input = forwardRef(function Input({ label, hint, error, type = "text", className = "", id, ...props }, ref) {
+const Input = forwardRef(function Input(
+  { label, hint, error, type = "text", surface = "workshop", className = "", id, ...props },
+  ref
+) {
   const [showPassword, setShowPassword] = useState(false)
-  const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined)
-  const isPassword = type === "password"
-  const resolvedType = isPassword ? (showPassword ? "text" : "password") : type
+  const inputId       = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined)
+  const isPassword    = type === "password"
+  const resolvedType  = isPassword ? (showPassword ? "text" : "password") : type
+  const isPaper       = surface === "paper"
+
+  // Token sets per surface
+  const tokens = isPaper
+    ? {
+        label:       "font-mono text-[11px] uppercase tracking-widest",
+        labelColor:  "var(--ink-soft)",
+        inputBase:   "w-full min-h-[44px] rounded-md border px-3 py-2.5 font-body text-sm transition-colors duration-fast focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
+        inputBg:     "var(--paper)",
+        inputColor:  "var(--ink)",
+        inputBorder: error ? "var(--error)" : "var(--line)",
+        focusBorder: "var(--accent-line)",
+        placeholder: "var(--ink-faint)",
+        toggleColor: "var(--ink-soft)",
+        hintColor:   "var(--ink-faint)",
+      }
+    : {
+        label:       "font-mono text-[11px] uppercase tracking-widest text-muted",
+        labelColor:  null,
+        inputBase:   "w-full min-h-[44px] rounded-md border bg-surface px-3 py-2.5 font-body text-sm text-primary transition-colors duration-fast placeholder:text-muted focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
+        inputBg:     null,
+        inputColor:  null,
+        inputBorder: null,
+        focusBorder: null,
+        placeholder: null,
+        toggleColor: null,
+        hintColor:   null,
+      }
+
+  // For workshop surface, keep original Tailwind class-based border logic
+  const workshopBorderClass = !isPaper
+    ? (error ? "border-error focus-visible:outline-error" : "border-border focus:border-accent-line")
+    : ""
+
+  // For paper surface, drive borders via inline style (CSS vars not in Tailwind border-* classes)
+  const paperInputStyle = isPaper
+    ? {
+        fontSize:          "16px",
+        background:        tokens.inputBg,
+        color:             tokens.inputColor,
+        borderColor:       tokens.inputBorder,
+        caretColor:        "var(--accent)",
+      }
+    : { fontSize: "16px" }
 
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={inputId} className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        <label
+          htmlFor={inputId}
+          className={tokens.label}
+          style={tokens.labelColor ? { color: tokens.labelColor } : undefined}
+        >
           {label}
         </label>
       )}
@@ -29,20 +91,29 @@ const Input = forwardRef(function Input({ label, hint, error, type = "text", cla
           ref={ref}
           id={inputId}
           type={resolvedType}
-          className={`w-full min-h-[44px] rounded-md border bg-surface px-3 py-2.5 font-body text-sm text-primary transition-colors duration-fast placeholder:text-muted focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40 ${
-            error ? "border-error focus-visible:outline-error" : "border-border focus:border-accent-line"
-          } ${isPassword ? "pr-10" : ""} ${className}`}
-          style={{ fontSize: "16px" }}
+          className={`${tokens.inputBase} ${workshopBorderClass} ${isPassword ? "pr-10" : ""} ${className}`}
+          style={paperInputStyle}
+          // Placeholder color for paper - CSS variable can't be set via Tailwind placeholder: class
+          // so we inject it as a style tag scoped to this input's id when on paper surface
           aria-invalid={!!error}
-          aria-describedby={[hint && `${inputId}-hint`, error && `${inputId}-error`].filter(Boolean).join(" ") || undefined}
+          aria-describedby={
+            [hint && `${inputId}-hint`, error && `${inputId}-error`]
+              .filter(Boolean).join(" ") || undefined
+          }
           {...props}
         />
+
+        {/* Paper surface placeholder color override - scoped, no global pollution */}
+        {isPaper && inputId && (
+          <style>{`#${CSS.escape(inputId)}::placeholder { color: ${tokens.placeholder}; }`}</style>
+        )}
 
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-muted transition-colors duration-fast hover:text-secondary focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 transition-colors duration-fast focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
+            style={{ color: tokens.toggleColor || undefined }}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? (
@@ -65,13 +136,21 @@ const Input = forwardRef(function Input({ label, hint, error, type = "text", cla
       </div>
 
       {hint && !error && (
-        <p id={`${inputId}-hint`} className="text-xs leading-relaxed text-muted">
+        <p
+          id={`${inputId}-hint`}
+          className="text-xs leading-relaxed"
+          style={isPaper ? { color: tokens.hintColor } : { color: "var(--text-muted)" }}
+        >
           {hint}
         </p>
       )}
 
       {error && (
-        <p id={`${inputId}-error`} className="flex items-center gap-1.5 text-xs text-error" role="alert">
+        <p
+          id={`${inputId}-error`}
+          className="flex items-center gap-1.5 text-xs text-error"
+          role="alert"
+        >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
             <path d="M6 4v2.5M6 8h.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
