@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from "d3-force"
 import { apiFetch } from "@/lib/supabase/api"
 import { useSelectedRepo } from "@/lib/context/SelectedRepoContext"
 import Card from "@/components/ui/Card"
@@ -146,23 +147,151 @@ export default function GraphPage() {
     )
   }
 
-  // ─── Success (placeholder - d3-force SVG lands in Step 4) ─────────
+  // ─── Success: rendered dependency graph ───────────────────────────
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-7 px-4 py-10 sm:px-6">
       <PageHeader repoName={selectedRepo.name} />
       <Card variant="default" padding="lg">
-        <div className="flex flex-wrap gap-6">
+        <div className="mb-4 flex flex-wrap gap-6">
           <Stat label="Files" value={graph.files.length} />
           <Stat label="Symbols" value={graph.symbols.length} />
           <Stat label="Edges" value={graph.edges.length} />
         </div>
-        <p className="mt-4 font-body text-xs text-muted">
-          Graph layout coming next — this panel will become the interactive
-          dependency graph.
-        </p>
+        <GraphCanvas graph={graph} />
       </Card>
     </div>
   )
+}
+
+/**
+ * GraphCanvas
+ *
+ * Lays out file-level nodes with d3-force, run synchronously to
+ * convergence (no animation loop - this is a static structural view).
+ * Edges are aggregated from symbol-level edges up to file pairs.
+ */
+function GraphCanvas({ graph }) {
+  const layout = useMemo(() => computeLayout(graph), [graph])
+
+  if (!layout) {
+    return (
+      <p className="font-body text-sm text-secondary">
+        Not enough data to render a graph for this repo yet.
+      </p>
+    )
+  }
+
+  const { nodes, links, viewBox } = layout
+
+  return (
+    <div className="w-full overflow-hidden rounded-md border border-border bg-base">
+      <svg
+        viewBox={viewBox}
+        width="100%"
+        height="600"
+        className="block"
+        role="img"
+        aria-label={`Dependency graph: ${nodes.length} files, ${links.length} import relationships`}
+      >
+        <g>
+          {links.map((l, i) => (
+            <line
+              key={`edge-${i}`}
+              x1={l.source.x}
+              y1={l.source.y}
+              x2={l.target.x}
+              y2={l.target.y}
+              stroke="var(--bg-border-2)"
+              strokeWidth={1}
+              opacity={0.5}
+            />
+          ))}
+        </g>
+        <g>
+          {nodes.map((n) => (
+            <g key={n.id}>
+              <circle
+                cx={n.x}
+                cy={n.y}
+                r={5}
+                fill="var(--bg-elevated)"
+                stroke="var(--bg-border-2)"
+                strokeWidth={1.5}
+              />
+            </g>
+          ))}
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+/**
+ * computeLayout
+ *
+ * 1. Build file-level nodes from graph.files.
+ * 2. Map symbol_id -> file_id from graph.symbols.
+ * 3. Aggregate graph.edges (symbol-level) into deduplicated file-pair
+ *    links, dropping self-loops.
+ * 4. Run a d3-force simulation synchronously for a fixed number of
+ *    ticks to reach a stable layout.
+ * 5. Compute a viewBox from the resulting node bounds with padding.
+ */
+function computeLayout(graph) {
+  if (!graph || !graph.files || graph.files.length === 0) return null
+
+  const nodes = graph.files.map((f) => ({
+    id: f.id,
+    path: f.path,
+    language: f.language,
+    x: 0,
+    y: 0,
+  }))
+
+  const symbolToFile = new Map()
+  for (const s of graph.symbols || []) {
+    symbolToFile.set(s.id, s.file_id)
+  }
+
+  const linkSet = new Set()
+  const links = []
+  for (const e of graph.edges || []) {
+    const sourceFile = symbolToFile.get(e.from_symbol_id) ?? e.source_file_id
+    const targetFile = symbolToFile.get(e.to_symbol_id)
+    if (!sourceFile || !targetFile || sourceFile === targetFile) continue
+
+    const key = sourceFile < targetFile ? `${sourceFile}:${targetFile}` : `${targetFile}:${sourceFile}`
+    if (linkSet.has(key)) continue
+    linkSet.add(key)
+    links.push({ source: sourceFile, target: targetFile })
+  }
+
+  if (nodes.length === 0) return null
+
+  const simulation = forceSimulation(nodes)
+    .force("link", forceLink(links).id((d) => d.id).distance(40).strength(0.4))
+    .force("charge", forceManyBody().strength(-30))
+    .force("center", forceCenter(0, 0))
+    .force("collide", forceCollide(8))
+    .stop()
+
+  const TICKS = 300
+  for (let i = 0; i < TICKS; i++) simulation.tick()
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const n of nodes) {
+    if (n.x < minX) minX = n.x
+    if (n.x > maxX) maxX = n.x
+    if (n.y < minY) minY = n.y
+    if (n.y > maxY) maxY = n.y
+  }
+
+  const PADDING = 20
+  const width = Math.max(maxX - minX, 1) + PADDING * 2
+  const height = Math.max(maxY - minY, 1) + PADDING * 2
+  const viewBox = `${minX - PADDING} ${minY - PADDING} ${width} ${height}`
+
+  return { nodes, links, viewBox }
 }
 
 function PageHeader({ repoName }) {
