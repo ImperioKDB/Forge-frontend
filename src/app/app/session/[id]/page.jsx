@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSessionPolling } from "@/lib/hooks/useSessionPolling"
 import StreamingOutput from "@/components/session/StreamingOutput"
+import PlanningScreen from "@/components/session/PlanningScreen"
 import PlanReview from "@/components/session/PlanReview"
 import SubtaskRail from "@/components/session/SubtaskRail"
 import PhaseStepper from "@/components/session/PhaseStepper"
@@ -72,16 +73,7 @@ function SessionHeader({ session, plannerModel, coderModel, onPlannerChange, onC
 }
 
 /* ─── Fallback states ─────────────────────────────────────────────── */
-function PlanningFallback() {
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="flex items-center gap-2 text-muted">
-        <span className="h-4 w-4 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />
-        <span className="font-mono text-sm">Planning…</span>
-      </div>
-    </div>
-  )
-}
+// PlanningFallback replaced by PlanningScreen
 
 function CodingFallback({ tasks }) {
   const runningTask = tasks?.find((t) => t.status === "running")
@@ -251,7 +243,7 @@ export default function SessionPage() {
       {(isPlanning || isCoding || isAwaitingApproval || isDone || isFailed) && (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="overflow-hidden" style={{ height: `${splitPercent}%` }}>
-            {isPlanning && (planStreamUrl ? <StreamingOutput streamUrl={planStreamUrl} title="Execution Plan" language="markdown" /> : <PlanningFallback />)}
+            {isPlanning && <PlanningScreen streamUrl={planStreamUrl} />}
             {isCoding && (codeStreamUrl ? <StreamingOutput streamUrl={codeStreamUrl} title="Generating code…" language="typescript" /> : <CodingFallback tasks={tasks} />)}
             {(isAwaitingApproval || isDone) && (
               <CodeReview
