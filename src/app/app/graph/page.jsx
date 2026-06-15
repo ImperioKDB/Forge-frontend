@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from "d3-force"
+import { motion, useReducedMotion } from "framer-motion"
 import { apiFetch } from "@/lib/supabase/api"
 import { useSelectedRepo } from "@/lib/context/SelectedRepoContext"
 import Card from "@/components/ui/Card"
@@ -23,6 +24,7 @@ export default function GraphPage() {
   const [graph, setGraph] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [selectedFileId, setSelectedFileId] = useState(null)
 
   const fetchGraph = useCallback(async () => {
     if (!selectedRepo) return
@@ -42,6 +44,7 @@ export default function GraphPage() {
   useEffect(() => {
     setGraph(null)
     setError(null)
+    setSelectedFileId(null)
     if (
       selectedRepo &&
       selectedRepo.index_status === "indexed" &&
@@ -149,7 +152,7 @@ export default function GraphPage() {
 
   // ─── Success: rendered dependency graph ───────────────────────────
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-7 px-4 py-10 sm:px-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-7 px-4 py-10 sm:px-6">
       <PageHeader repoName={selectedRepo.name} />
       <Card variant="default" padding="lg">
         <div className="mb-4 flex flex-wrap gap-6">
@@ -157,7 +160,23 @@ export default function GraphPage() {
           <Stat label="Symbols" value={graph.symbols.length} />
           <Stat label="Edges" value={graph.edges.length} />
         </div>
-        <GraphCanvas graph={graph} />
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="lg:flex-1 lg:min-w-0">
+            <GraphCanvas
+              graph={graph}
+              selectedFileId={selectedFileId}
+              onSelectFile={setSelectedFileId}
+            />
+          </div>
+          <div className="lg:w-[280px] lg:shrink-0">
+            <SidePanel
+              repoId={selectedRepo.id}
+              graph={graph}
+              selectedFileId={selectedFileId}
+              onClose={() => setSelectedFileId(null)}
+            />
+          </div>
+        </div>
       </Card>
     </div>
   )
@@ -170,8 +189,9 @@ export default function GraphPage() {
  * convergence (no animation loop - this is a static structural view).
  * Edges are aggregated from symbol-level edges up to file pairs.
  */
-function GraphCanvas({ graph }) {
+function GraphCanvas({ graph, selectedFileId, onSelectFile }) {
   const layout = useMemo(() => computeLayout(graph), [graph])
+  const reduceMotion = useReducedMotion()
 
   if (!layout) {
     return (
@@ -183,6 +203,11 @@ function GraphCanvas({ graph }) {
 
   const { nodes, links, viewBox } = layout
 
+  function isDirectLink(l) {
+    if (!selectedFileId) return false
+    return l.source.id === selectedFileId || l.target.id === selectedFileId
+  }
+
   return (
     <div className="w-full overflow-hidden rounded-md border border-border bg-base">
       <svg
@@ -193,35 +218,196 @@ function GraphCanvas({ graph }) {
         role="img"
         aria-label={`Dependency graph: ${nodes.length} files, ${links.length} import relationships`}
       >
+        {/* ─── Edges: static, except direct edges of the selected node ─── */}
         <g>
-          {links.map((l, i) => (
-            <line
-              key={`edge-${i}`}
-              x1={l.source.x}
-              y1={l.source.y}
-              x2={l.target.x}
-              y2={l.target.y}
-              stroke="var(--text-secondary)"
-              strokeWidth={1}
-              opacity={0.35}
-            />
-          ))}
-        </g>
-        <g>
-          {nodes.map((n) => (
-            <g key={n.id}>
-              <circle
-                cx={n.x}
-                cy={n.y}
-                r={5}
-                fill="var(--bg-base)"
-                stroke="var(--text-secondary)"
-                strokeWidth={1.5}
+          {links.map((l, i) => {
+            const direct = isDirectLink(l)
+            return (
+              <motion.line
+                key={`edge-${i}`}
+                x1={l.source.x}
+                y1={l.source.y}
+                x2={l.target.x}
+                y2={l.target.y}
+                stroke={direct ? "var(--accent)" : "var(--text-secondary)"}
+                initial={false}
+                animate={{
+                  opacity: direct ? 0.9 : 0.35,
+                  strokeWidth: direct ? 2 : 1,
+                }}
+                transition={{ duration: reduceMotion ? 0 : 0.2 }}
               />
-            </g>
-          ))}
+            )
+          })}
+        </g>
+
+        {/* ─── Nodes: static, except the selected node ─── */}
+        <g>
+          {nodes.map((n) => {
+            const isSelected = n.id === selectedFileId
+            return (
+              <g
+                key={n.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`File ${n.path}${isSelected ? ", selected" : ""}`}
+                aria-pressed={isSelected}
+                onClick={() => onSelectFile(isSelected ? null : n.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    onSelectFile(isSelected ? null : n.id)
+                  }
+                }}
+                style={{ cursor: "pointer", outlineOffset: 3 }}
+                className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                {isSelected ? (
+                  <motion.circle
+                    cx={n.x}
+                    cy={n.y}
+                    r={7}
+                    fill="var(--selected-soft)"
+                    stroke="var(--selected)"
+                    strokeWidth={2.5}
+                    initial={reduceMotion ? { scale: 1 } : { scale: 0.85 }}
+                    animate={{ scale: [0.85, 1.08, 1] }}
+                    transition={{
+                      duration: reduceMotion ? 0 : 0.35,
+                      ease: [0.16, 1, 0.3, 1],
+                      times: [0, 0.6, 1],
+                    }}
+                    style={{ transformOrigin: `${n.x}px ${n.y}px` }}
+                  />
+                ) : (
+                  <circle
+                    cx={n.x}
+                    cy={n.y}
+                    r={5}
+                    fill="var(--bg-base)"
+                    stroke="var(--text-secondary)"
+                    strokeWidth={1.5}
+                  />
+                )}
+              </g>
+            )
+          })}
         </g>
       </svg>
+    </div>
+  )
+}
+
+/**
+ * SidePanel
+ *
+ * Shows details for the selected file: path, language, and its
+ * symbols (from the bulk graph response - no extra fetch for the
+ * list). Clicking a symbol lazily fetches full detail (signature,
+ * metadata) via GET /repos/:id/graph/symbol/:symbolId.
+ */
+function SidePanel({ repoId, graph, selectedFileId, onClose }) {
+  const [symbolDetail, setSymbolDetail] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState(null)
+
+  useEffect(() => {
+    setSymbolDetail(null)
+    setDetailError(null)
+  }, [selectedFileId])
+
+  if (!selectedFileId) {
+    return (
+      <div className="rounded-md border border-border bg-elevated p-4">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Selection</p>
+        <p className="mt-2 font-body text-xs text-secondary">
+          Click a node to see its file and symbols.
+        </p>
+      </div>
+    )
+  }
+
+  const file = graph.files.find((f) => f.id === selectedFileId)
+  const symbols = (graph.symbols || []).filter((s) => s.file_id === selectedFileId)
+
+  async function loadSymbolDetail(symbolId) {
+    setDetailLoading(true)
+    setDetailError(null)
+    try {
+      const data = await apiFetch(`/repos/${repoId}/graph/symbol/${symbolId}`)
+      setSymbolDetail(data?.symbol || null)
+    } catch (err) {
+      setDetailError(err.message)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-selected-line bg-selected-soft p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-selected">Selected file</p>
+          <p className="mt-1 break-all font-mono text-xs text-primary">{file?.path ?? "Unknown file"}</p>
+          {file?.language && (
+            <p className="mt-0.5 font-mono text-[10px] text-muted">{file.language}</p>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Clear selection"
+          className="shrink-0 font-mono text-xs text-muted hover:text-secondary transition-colors duration-fast"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
+          Symbols ({symbols.length})
+        </p>
+        {symbols.length === 0 ? (
+          <p className="font-body text-xs text-secondary">No indexed symbols for this file.</p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {symbols.map((s) => (
+              <li key={s.id}>
+                <button
+                  onClick={() => loadSymbolDetail(s.id)}
+                  className="flex w-full items-center justify-between gap-2 rounded-sm border border-border-2 bg-elevated px-2.5 py-1.5 text-left transition-colors duration-fast hover:border-accent-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  <span className="truncate font-mono text-xs text-secondary">{s.name}</span>
+                  <span className="shrink-0 font-mono text-[10px] uppercase text-muted">
+                    {s.kind}{s.exported ? " · export" : ""}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {detailLoading && (
+        <div className="h-16 animate-pulse rounded-md bg-elevated" />
+      )}
+
+      {detailError && (
+        <p className="font-body text-xs text-error">Couldn't load symbol detail: {detailError}</p>
+      )}
+
+      {symbolDetail && !detailLoading && (
+        <div className="flex flex-col gap-1.5 rounded-md border border-border bg-elevated p-3">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{symbolDetail.name}</p>
+          {symbolDetail.signature && (
+            <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] text-secondary">
+              {symbolDetail.signature}
+            </pre>
+          )}
+          {symbolDetail.start_line != null && (
+            <p className="font-mono text-[10px] text-muted">Line {symbolDetail.start_line}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
