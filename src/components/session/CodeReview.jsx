@@ -19,7 +19,7 @@ export default function CodeReview({ session, onApproved, onPushComplete }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const subtask = session?.subtasks?.find((t) => t.status === "awaiting_approval")
+  const subtask = session?.tasks?.find((t) => t.status === "awaiting_approval")
   const draft = subtask?.code_drafts?.[0]
 
   if (!subtask || !draft) return null
