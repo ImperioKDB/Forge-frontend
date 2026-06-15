@@ -201,9 +201,9 @@ function GraphCanvas({ graph }) {
               y1={l.source.y}
               x2={l.target.x}
               y2={l.target.y}
-              stroke="var(--bg-border-2)"
+              stroke="var(--text-secondary)"
               strokeWidth={1}
-              opacity={0.5}
+              opacity={0.35}
             />
           ))}
         </g>
@@ -214,8 +214,8 @@ function GraphCanvas({ graph }) {
                 cx={n.x}
                 cy={n.y}
                 r={5}
-                fill="var(--bg-elevated)"
-                stroke="var(--bg-border-2)"
+                fill="var(--bg-base)"
+                stroke="var(--text-secondary)"
                 strokeWidth={1.5}
               />
             </g>
@@ -284,6 +284,24 @@ function computeLayout(graph) {
     if (n.x > maxX) maxX = n.x
     if (n.y < minY) minY = n.y
     if (n.y > maxY) maxY = n.y
+  }
+
+  // Defensive fallback: if the simulation produced a degenerate result
+  // (e.g. all nodes still at 0,0 - can happen with disconnected graphs
+  // and certain force configurations), arrange nodes on a circle so
+  // something always renders instead of a blank panel.
+  const spread = Math.max(maxX - minX, maxY - minY)
+  if (!Number.isFinite(spread) || spread < 1) {
+    const radius = Math.max(40, nodes.length * 6)
+    nodes.forEach((n, i) => {
+      const angle = (i / nodes.length) * Math.PI * 2
+      n.x = Math.cos(angle) * radius
+      n.y = Math.sin(angle) * radius
+    })
+    minX = -radius
+    maxX = radius
+    minY = -radius
+    maxY = radius
   }
 
   const PADDING = 20
