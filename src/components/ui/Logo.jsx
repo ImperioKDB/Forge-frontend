@@ -31,7 +31,7 @@ export function LogoMark({ size = 22, className = "" }) {
 export default function Logo({ size = "md", withWordmark = true, className = "" }) {
   const cfg = SIZES[size] ?? SIZES.md
   return (
-    <span className={`inline-flex items-center gap-2 font-display font-semibold ${cfg.text} ${className}`}>
+    <span className={`inline-flex items-center gap-2 font-display font-semibold text-primary ${cfg.text} ${className}`}>
       <LogoMark size={cfg.mark} />
       {withWordmark && "Forge"}
     </span>
