@@ -88,7 +88,7 @@ export default function AppShell({ children }) {
 
   return (
     <SelectedRepoProvider value={{ selectedRepo, setSelectedRepo, repos }}>
-      <div data-theme="workshop" className="bg-base text-primary">
+      <div data-theme="workshop" className="min-h-screen bg-base text-primary">
         <Topbar open={open} onToggle={toggleSidebar} selectedRepo={selectedRepo} repos={repos} onRepoChange={setSelectedRepo} />
         {isMobile && <MobileScrim visible={open} onClick={closeSidebar} />}
         <Sidebar open={open} onClose={closeSidebar} selectedRepoId={selectedRepo?.id} isMobile={isMobile} />
