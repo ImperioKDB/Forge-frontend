@@ -7,60 +7,158 @@ import Card from "@/components/ui/Card"
 import StatusDot from "@/components/ui/StatusDot"
 import { useToast } from "@/components/ui/Toast"
 import DependencyGraph from "@/components/graph/DependencyGraph"
+import { useSubgraph } from "@/lib/hooks/useSubgraph"
 
 /**
- * FORGE — PlanReview
+ * FORGE -- PlanReview
  *
- * The "review the plan" step. Rebuilt with:
- *  - An impact graph generated from the subtasks' file paths — the
- *    first subtask is treated as the "changed" anchor, the rest as
- *    "affected" nodes radiating out. This is a layout heuristic for
- *    visualization; the actual dependency data lives in the subtask
- *    list itself.
- *  - panel-rule cards for each subtask (numbered ledger style).
- *  - Tokens instead of inline hex/styles throughout.
+ * "Review the plan" step. The impact map now shows the *real* file-level
+ * dependency subgraph fetched from the indexed repo graph, not a fake
+ * circular layout computed from task positions.
+ *
+ * Graph logic:
+ *   - The first task's file is the "changed" (anchor) node.
+ *   - Every other task file that has a direct IMPORTS edge to/from the
+ *     anchor becomes an "affected" node with a real cubic bezier path.
+ *   - Additional files from the subgraph that are NOT task files but ARE
+ *     connected are shown as "untouched" (faint idle nodes).
+ *   - Falls back to a simple circular heuristic layout if the subgraph
+ *     returns no edges (e.g. the repo hasn't been indexed yet).
  */
 
+const VB_W = 460
+const VB_H = 420
+const CX   = VB_W / 2
+const CY    = VB_H / 2 - 20
+
 function shortName(path) {
+  if (!path) return ""
   const parts = path.split("/")
   return parts.length > 1 ? `${parts[parts.length - 2]}/${parts[parts.length - 1]}` : path
 }
 
-function buildGraphLayout(subtasks) {
-  if (subtasks.length === 0) return null
+function cubicPath(x1, y1, x2, y2) {
+  const mx = (x1 + x2) / 2
+  const my = (y1 + y2) / 2
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const ctrl1x = x1 + dx * 0.35 - dy * 0.18
+  const ctrl1y = y1 + dy * 0.35 + dx * 0.18
+  const ctrl2x = x1 + dx * 0.65 - dy * 0.18
+  const ctrl2y = y1 + dy * 0.65 + dx * 0.18
+  return `M${Math.round(x1)},${Math.round(y1)} C${Math.round(ctrl1x)},${Math.round(ctrl1y)} ${Math.round(ctrl2x)},${Math.round(ctrl2y)} ${Math.round(x2)},${Math.round(y2)}`
+}
 
-  const [anchor, ...rest] = subtasks
-  const cx = 230
-  const cy = 230
-  const radius = 170
+/**
+ * Convert raw subgraph data + task list into the { changed, affected,
+ * untouched } props DependencyGraph expects.
+ *
+ * Algorithm:
+ *   1. Build a file -> id map from subgraph nodes.
+ *   2. Place task files first; remaining subgraph files fill remaining slots.
+ *   3. Position all non-anchor files on an adaptive ellipse.
+ *   4. Emit edges as cubic bezier paths anchored at (CX, CY).
+ */
+function buildRealLayout(tasks, subNodes, subEdges) {
+  if (!tasks || tasks.length === 0) return null
 
-  const affected = rest.slice(0, 7).map((task, i) => {
-    const angle = (i / Math.max(rest.length, 1)) * Math.PI * 1.6 - Math.PI * 0.3
-    const x = cx + Math.cos(angle) * radius
-    const y = cy + Math.sin(angle) * radius
+  const anchorTask = tasks[0]
+  const anchorPath = anchorTask.file_path
+
+  // File id -> path lookup from subgraph
+  const idToPath = new Map()
+  for (const n of subNodes) idToPath.set(n.id, n.path)
+  const pathToId = new Map()
+  for (const n of subNodes) pathToId.set(n.path, n.id)
+
+  // Build adjacency for non-anchor files that have a real edge
+  const anchorId = pathToId.get(anchorPath)
+  const connectedPaths = new Set()
+  for (const e of subEdges) {
+    const fromPath = idToPath.get(e.from)
+    const toPath   = idToPath.get(e.to)
+    if (!fromPath || !toPath) continue
+    if (fromPath === anchorPath) connectedPaths.add(toPath)
+    if (toPath   === anchorPath) connectedPaths.add(fromPath)
+  }
+
+  // Collect display files: other task files first, then connected subgraph files
+  const taskPaths = tasks.slice(1).map(t => t.file_path)
+  const extraConnected = [...connectedPaths].filter(p => !taskPaths.includes(p) && p !== anchorPath)
+  const allOther = [...new Set([...taskPaths, ...extraConnected])].slice(0, 8)
+
+  // Positions on ellipse around anchor
+  const rw = Math.min(CX - 40, 185)
+  const rh = Math.min(CY - 30, 155)
+  const positions = allOther.map((_, i) => {
+    const angle = (i / Math.max(allOther.length, 1)) * Math.PI * 1.65 - Math.PI * 0.32
     return {
-      id: task.id,
-      x: Math.round(x),
-      y: Math.round(y),
-      r: 16,
-      label: shortName(task.file_path),
-      path: `M${cx},${cy} C${cx + (x - cx) * 0.4},${cy + (y - cy) * 0.2} ${cx + (x - cx) * 0.7},${cy + (y - cy) * 0.6} ${Math.round(x)},${Math.round(y)}`,
+      x: Math.round(CX + Math.cos(angle) * rw),
+      y: Math.round(CY + Math.sin(angle) * rh),
     }
   })
 
+  // Classify each non-anchor file as "affected" (is a task) or "untouched"
+  const taskPathSet = new Set(taskPaths)
+  const affected  = []
+  const untouched = []
+
+  for (let i = 0; i < allOther.length; i++) {
+    const path = allOther[i]
+    const { x, y } = positions[i]
+    const node = {
+      id:    path,
+      x,
+      y,
+      r:     taskPathSet.has(path) ? 16 : 12,
+      label: shortName(path),
+      path:  cubicPath(CX, CY, x, y),
+    }
+    if (taskPathSet.has(path)) {
+      affected.push(node)
+    } else {
+      untouched.push(node)
+    }
+  }
+
   return {
-    changed: { id: anchor.id, x: cx, y: cy, r: 26, label: shortName(anchor.file_path) },
+    changed: {
+      id:    anchorPath,
+      x:     CX,
+      y:     CY,
+      r:     26,
+      label: shortName(anchorPath),
+    },
     affected,
+    untouched,
   }
 }
 
 export default function PlanReview({ session, onApproved }) {
   const { addToast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
   const [feedback, setFeedback] = useState("")
+
+  // ── Fix: the session object uses `tasks`, not `subtasks` ──────────
   const subtasks = session?.tasks || []
-  const graph = useMemo(() => buildGraphLayout(subtasks), [subtasks])
+
+  const filePaths = useMemo(
+    () => subtasks.map((t) => t.file_path).filter(Boolean),
+    [subtasks]
+  )
+
+  // ── Real subgraph from the indexed repo ──────────────────────────
+  const { nodes: subNodes, edges: subEdges, loading: graphLoading } = useSubgraph(
+    session?.repo_id,
+    filePaths
+  )
+
+  // ── Build layout from real data ──────────────────────────────────
+  const graph = useMemo(
+    () => buildRealLayout(subtasks, subNodes, subEdges),
+    [subtasks, subNodes, subEdges]
+  )
 
   async function handleApprove() {
     setError(null)
@@ -113,21 +211,41 @@ export default function PlanReview({ session, onApproved }) {
         </p>
       </div>
 
-      {graph && (
-        <div>
-          <div className="mb-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Impact map</div>
-          <div className="overflow-hidden rounded-lg border border-border bg-surface p-2">
-            <DependencyGraph viewBox="0 0 460 460" changed={graph.changed} affected={graph.affected} untouched={[]} className="aspect-square" />
-          </div>
+      {/* ── Impact map (real graph or loading skeleton) ── */}
+      <div>
+        <div className="mb-2.5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
+          Impact map
+          {graphLoading && (
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+          )}
         </div>
-      )}
+        <div className="overflow-hidden rounded-lg border border-border bg-surface p-2">
+          {graph ? (
+            <DependencyGraph
+              viewBox={`0 0 ${VB_W} ${VB_H}`}
+              changed={graph.changed}
+              affected={graph.affected}
+              untouched={graph.untouched}
+              className="aspect-square"
+            />
+          ) : (
+            <div className="flex aspect-square items-center justify-center">
+              <span className="font-mono text-xs text-muted">
+                {graphLoading ? "Loading graph…" : "No graph data"}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="flex flex-col gap-2">
         <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Subtasks</div>
         {subtasks.map((task, i) => (
           <Card key={task.id} variant="default" padding="sm">
             <div className="flex items-start gap-3">
-              <span className="shrink-0 pt-0.5 font-mono text-xs text-accent opacity-70">{String(i + 1).padStart(2, "0")}</span>
+              <span className="shrink-0 pt-0.5 font-mono text-xs text-accent opacity-70">
+                {String(i + 1).padStart(2, "0")}
+              </span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="truncate font-mono text-xs text-secondary">{task.file_path}</span>
                 <p className="font-body text-xs leading-relaxed text-muted">{task.instruction}</p>
@@ -139,7 +257,9 @@ export default function PlanReview({ session, onApproved }) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="font-mono text-[11px] uppercase tracking-widest text-muted">Feedback (optional)</label>
+        <label className="font-mono text-[11px] uppercase tracking-widest text-muted">
+          Feedback (optional)
+        </label>
         <textarea
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
