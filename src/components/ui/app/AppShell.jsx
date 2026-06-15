@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useRepos } from "@/lib/hooks/useRepos"
 import Topbar from "@/components/ui/app/Topbar"
 import Sidebar from "@/components/ui/app/Sidebar"
+import { SelectedRepoProvider } from "@/lib/context/SelectedRepoContext"
 
 function MobileScrim({ visible, onClick }) {
   return (
@@ -51,7 +52,9 @@ function useEdgeSwipeOpen(onOpen, isOpen) {
  * /app/* route with Topbar + Sidebar. Sets data-theme="workshop" so
  * the dark token set in globals.css applies to this whole subtree.
  *
- * Children can be a render-prop: ({ selectedRepo, setSelectedRepo }) => ReactNode
+ * selectedRepo / setSelectedRepo / repos are exposed to any descendant
+ * page via SelectedRepoProvider — call useSelectedRepo() from
+ * @/lib/context/SelectedRepoContext to access them.
  */
 export default function AppShell({ children }) {
   const [open, setOpen] = useState(false)
@@ -84,13 +87,15 @@ export default function AppShell({ children }) {
   const desktopMargin = !isMobile ? (open ? 236 : 52) : 0
 
   return (
-    <div data-theme="workshop" className="bg-base text-primary">
-      <Topbar open={open} onToggle={toggleSidebar} selectedRepo={selectedRepo} repos={repos} onRepoChange={setSelectedRepo} />
-      {isMobile && <MobileScrim visible={open} onClick={closeSidebar} />}
-      <Sidebar open={open} onClose={closeSidebar} selectedRepoId={selectedRepo?.id} isMobile={isMobile} />
-      <main className="transition-[margin] duration-normal" style={{ marginTop: "58px", marginLeft: `${desktopMargin}px` }}>
-        {typeof children === "function" ? children({ selectedRepo, setSelectedRepo }) : children}
-      </main>
-    </div>
+    <SelectedRepoProvider value={{ selectedRepo, setSelectedRepo, repos }}>
+      <div data-theme="workshop" className="bg-base text-primary">
+        <Topbar open={open} onToggle={toggleSidebar} selectedRepo={selectedRepo} repos={repos} onRepoChange={setSelectedRepo} />
+        {isMobile && <MobileScrim visible={open} onClick={closeSidebar} />}
+        <Sidebar open={open} onClose={closeSidebar} selectedRepoId={selectedRepo?.id} isMobile={isMobile} />
+        <main className="transition-[margin] duration-normal" style={{ marginTop: "58px", marginLeft: `${desktopMargin}px` }}>
+          {children}
+        </main>
+      </div>
+    </SelectedRepoProvider>
   )
 }
