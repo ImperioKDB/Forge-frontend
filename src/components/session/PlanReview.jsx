@@ -59,7 +59,7 @@ export default function PlanReview({ session, onApproved }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [feedback, setFeedback] = useState("")
-  const subtasks = session?.subtasks || []
+  const subtasks = session?.tasks || []
   const graph = useMemo(() => buildGraphLayout(subtasks), [subtasks])
 
   async function handleApprove() {
