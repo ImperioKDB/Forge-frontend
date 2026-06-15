@@ -104,16 +104,7 @@ export default function GraphPage() {
       <div className="mx-auto flex max-w-2xl flex-col gap-7 px-4 py-10 sm:px-6">
         <PageHeader repoName={selectedRepo.name} />
         <Card variant="default" padding="lg">
-          <div className="flex flex-col gap-3">
-            <span className="font-mono text-xs text-muted">
-              Indexing — {selectedRepo.file_count ?? 0} / {selectedRepo.file_count ?? 0} files
-            </span>
-            <div className="flex flex-col gap-2">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded-md bg-elevated" />
-              ))}
-            </div>
-          </div>
+          <GraphLoadingProgress fileCount={selectedRepo.file_count ?? 0} />
         </Card>
       </div>
     )
@@ -201,7 +192,7 @@ function GraphCanvas({ graph, selectedFileId, onSelectFile }) {
     )
   }
 
-  const { nodes, links, viewBox } = layout
+  const { nodes, links, viewBox, nodeRadius, strokeWidth } = layout
 
   function isDirectLink(l) {
     if (!selectedFileId) return false
@@ -233,7 +224,7 @@ function GraphCanvas({ graph, selectedFileId, onSelectFile }) {
                 initial={false}
                 animate={{
                   opacity: direct ? 0.9 : 0.35,
-                  strokeWidth: direct ? 2 : 1,
+                  strokeWidth: direct ? strokeWidth * 1.8 : strokeWidth,
                 }}
                 transition={{ duration: reduceMotion ? 0 : 0.2 }}
               />
@@ -266,10 +257,10 @@ function GraphCanvas({ graph, selectedFileId, onSelectFile }) {
                   <motion.circle
                     cx={n.x}
                     cy={n.y}
-                    r={7}
+                    r={nodeRadius * 1.4}
                     fill="var(--selected-soft)"
                     stroke="var(--selected)"
-                    strokeWidth={2.5}
+                    strokeWidth={strokeWidth * 1.8}
                     initial={reduceMotion ? { scale: 1 } : { scale: 0.85 }}
                     animate={{ scale: [0.85, 1.08, 1] }}
                     transition={{
@@ -283,10 +274,10 @@ function GraphCanvas({ graph, selectedFileId, onSelectFile }) {
                   <circle
                     cx={n.x}
                     cy={n.y}
-                    r={5}
+                    r={nodeRadius}
                     fill="var(--bg-base)"
                     stroke="var(--text-secondary)"
-                    strokeWidth={1.5}
+                    strokeWidth={strokeWidth}
                   />
                 )}
               </g>
@@ -455,10 +446,10 @@ function computeLayout(graph) {
   if (nodes.length === 0) return null
 
   const simulation = forceSimulation(nodes)
-    .force("link", forceLink(links).id((d) => d.id).distance(40).strength(0.4))
-    .force("charge", forceManyBody().strength(-30))
+    .force("link", forceLink(links).id((d) => d.id).distance(24).strength(0.6))
+    .force("charge", forceManyBody().strength(-12).distanceMax(120))
     .force("center", forceCenter(0, 0))
-    .force("collide", forceCollide(8))
+    .force("collide", forceCollide(7))
     .stop()
 
   const TICKS = 300
@@ -495,7 +486,16 @@ function computeLayout(graph) {
   const height = Math.max(maxY - minY, 1) + PADDING * 2
   const viewBox = `${minX - PADDING} ${minY - PADDING} ${width} ${height}`
 
-  return { nodes, links, viewBox }
+  // Scale node radius / stroke width relative to the viewBox extent so
+  // nodes stay visible regardless of how spread out the layout is.
+  // ~600px SVG height mapped against `height` viewBox units gives the
+  // on-screen pixel scale; clamp so very small or very large graphs
+  // still render sensibly.
+  const pxPerUnit = 600 / height
+  const nodeRadius = Math.min(10, Math.max(4, 5 / pxPerUnit))
+  const strokeWidth = Math.min(3, Math.max(1, 1.5 / pxPerUnit))
+
+  return { nodes, links, viewBox, nodeRadius, strokeWidth }
 }
 
 function PageHeader({ repoName }) {
@@ -517,6 +517,50 @@ function Stat({ label, value }) {
     <div className="flex flex-col gap-1">
       <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{label}</span>
       <span className="font-display text-2xl font-medium text-primary">{value.toLocaleString()}</span>
+    </div>
+  )
+}
+
+/**
+ * GraphLoadingProgress
+ *
+ * Replaces the blank/skeleton-only loading state with a determinate-
+ * feeling progress bar. We don't get real progress events from the
+ * single GET /repos/:id/graph fetch, so the bar fills toward ~92%
+ * over a fixed CSS transition and holds there until the fetch
+ * resolves and the page swaps to real content - avoids both a blank
+ * flash and a misleading "100% then nothing happens" moment.
+ *
+ * Pure CSS transition (width + transition-duration), no animation
+ * loop - cheap and respects prefers-reduced-motion automatically
+ * (reduced motion media query disables the transition globally via
+ * globals.css if already configured; otherwise the bar just appears
+ * near-full immediately, which is an acceptable fallback).
+ */
+function GraphLoadingProgress({ fileCount }) {
+  const [filled, setFilled] = useState(false)
+
+  useEffect(() => {
+    // Defer to next frame so the transition actually animates from 0.
+    const raf = requestAnimationFrame(() => setFilled(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  return (
+    <div className="flex flex-col gap-3">
+      <span className="font-mono text-xs text-muted">
+        Indexing — {fileCount.toLocaleString()} / {fileCount.toLocaleString()} files
+      </span>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated">
+        <div
+          className="h-full rounded-full bg-accent transition-[width] ease-out"
+          style={{
+            width: filled ? "92%" : "4%",
+            transitionDuration: "2400ms",
+          }}
+        />
+      </div>
+      <p className="font-mono text-[11px] text-muted">Building dependency graph…</p>
     </div>
   )
 }
