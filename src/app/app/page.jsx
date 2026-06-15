@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/supabase/api"
 import Button from "@/components/ui/Button"
@@ -116,16 +116,68 @@ export default function NewTaskPage() {
  * shown on the session review page.
  */
 function ImpactPreview({ repoId, task }) {
-  // For the redesign, this renders a static illustrative preview.
-  // Wire this up to a real `/repos/:id/impact-preview?q=...` endpoint
-  // (debounced) when available — same visual shell, just populate
-  // `files` from the response.
-  const files = [
-    "app/settings/page.jsx",
-    "lib/hooks/useTheme.js",
-    "components/ui/ThemeToggle.jsx",
-    "app/layout.jsx",
-  ]
+  // Phase 5: real impact preview, debounced against
+  // /repos/:id/impact-preview?q=<task>. Same visual chrome as the
+  // static illustrative version - loading/error/empty states added.
+  const [files, setFiles] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    if (!task || task.trim().length <= 8) {
+      setFiles([])
+      setLoading(false)
+      setError(false)
+      return
+    }
+
+    const handle = setTimeout(async () => {
+      setLoading(true)
+      setError(false)
+      try {
+        const data = await apiFetch(`/repos/${repoId}/impact-preview?q=${encodeURIComponent(task)}`)
+        setFiles(data?.files || [])
+      } catch {
+        setError(true)
+        setFiles([])
+      } finally {
+        setLoading(false)
+      }
+    }, 400)
+
+    return () => clearTimeout(handle)
+  }, [repoId, task])
+
+  if (loading) {
+    return (
+      <div className="rounded-md border border-accent-line bg-accent-soft p-4">
+        <div className="mb-2.5 flex items-center justify-between">
+          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent">Likely affected — preview</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="h-6 w-28 animate-pulse rounded-sm border border-border-2 bg-elevated"
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-accent-line bg-accent-soft p-4">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent">Likely affected — preview</span>
+        <p className="mt-2 font-body text-sm text-secondary">Couldn't load impact preview.</p>
+      </div>
+    )
+  }
+
+  if (files.length === 0) {
+    return null
+  }
 
   return (
     <div className="rounded-md border border-accent-line bg-accent-soft p-4">
@@ -135,8 +187,8 @@ function ImpactPreview({ repoId, task }) {
       </div>
       <div className="flex flex-wrap gap-2">
         {files.map((f) => (
-          <span key={f} className="rounded-sm border border-border-2 bg-elevated px-2.5 py-1 font-mono text-xs text-secondary">
-            {f}
+          <span key={f.path} className="rounded-sm border border-border-2 bg-elevated px-2.5 py-1 font-mono text-xs text-secondary">
+            {f.path}
           </span>
         ))}
       </div>
