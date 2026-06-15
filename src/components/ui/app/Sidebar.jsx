@@ -164,9 +164,29 @@ export default function Sidebar({ open, onClose, selectedRepoId, isMobile }) {
         )}
       </nav>
 
-      {/* Settings */}
+      {/* Graph + Settings */}
       {showLabels && (
-        <div className="shrink-0 border-t border-border p-2">
+        <div className="shrink-0 border-t border-border p-2 flex flex-col gap-1">
+          <button
+            onClick={() => {
+              router.push("/app/graph")
+              if (isMobile) onClose()
+            }}
+            className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-2 py-2 transition-all duration-fast ${
+              pathname === "/app/graph"
+                ? "bg-accent-soft text-accent"
+                : "text-muted hover:bg-elevated hover:text-secondary"
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M3 10.5L7 4L11 10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="7" cy="4" r="1.6" stroke="currentColor" strokeWidth="1.4" />
+              <circle cx="3" cy="10.5" r="1.6" stroke="currentColor" strokeWidth="1.4" />
+              <circle cx="11" cy="10.5" r="1.6" stroke="currentColor" strokeWidth="1.4" />
+            </svg>
+            <span className="font-body text-xs">Graph</span>
+          </button>
+
           <button
             onClick={() => {
               router.push("/app/settings")
