@@ -143,23 +143,6 @@ function FailedState() {
  * Uses pulse animation only — no spinners.
  */
 function SessionSkeleton() {
-  // After approve-plan POST, poll every 500ms until status leaves plan_review.
-  // This handles Supabase read-after-write lag without any manual navigation.
-  function handlePlanApproved() {
-    let attempts = 0
-    const MAX_ATTEMPTS = 20  // 10 seconds max
-    const poll = setInterval(async () => {
-      attempts++
-      await refetch()
-      // refetch updates the session state; when status != plan_review
-      // the component will re-render and PlanReview will unmount naturally.
-      if (attempts >= MAX_ATTEMPTS) {
-        clearInterval(poll)
-      }
-    }, 500)
-  }
-
-
   return (
     <div data-theme="workshop" className="flex min-h-screen flex-col bg-base">
       {/* Header bar */}
@@ -281,6 +264,22 @@ export default function SessionPage() {
       })
       .catch(() => {})
   }, [])
+
+  // After approve-plan POST, poll every 500ms until status leaves plan_review.
+  // This handles Supabase read-after-write lag without any manual navigation.
+  function handlePlanApproved() {
+    let attempts = 0
+    const MAX_ATTEMPTS = 20  // 10 seconds max
+    const poll = setInterval(async () => {
+      attempts++
+      await refetch()
+      // refetch updates the session state; when status != plan_review
+      // the component will re-render and PlanReview will unmount naturally.
+      if (attempts >= MAX_ATTEMPTS) {
+        clearInterval(poll)
+      }
+    }, 500)
+  }
 
   function handlePlannerChange(model) {
     setPlannerModel(model)
