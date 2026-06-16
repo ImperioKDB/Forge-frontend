@@ -1,5 +1,7 @@
 "use client"
 
+import React from "react"
+
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSessionPolling } from "@/lib/hooks/useSessionPolling"
@@ -133,6 +135,113 @@ function FailedState() {
 }
 
 /* ─── Main page ───────────────────────────────────────────────────── */
+/**
+ * SessionSkeleton
+ *
+ * Placeholder that mirrors the real session page layout.
+ * Shown while the initial session fetch is in-flight.
+ * Uses pulse animation only — no spinners.
+ */
+function SessionSkeleton() {
+  return (
+    <div data-theme="workshop" className="flex min-h-screen flex-col bg-base">
+      {/* Header bar */}
+      <div className="flex h-[58px] shrink-0 items-center gap-3 border-b border-border px-4">
+        <div className="h-4 w-24 animate-pulse rounded bg-elevated" />
+        <div className="ml-auto h-7 w-32 animate-pulse rounded-lg bg-elevated" />
+        <div className="h-7 w-7 animate-pulse rounded-full bg-elevated" />
+      </div>
+      {/* Stepper */}
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        {[0,1,2,3,4].map(i => (
+          <div key={i} className="h-7 w-7 animate-pulse rounded-full bg-elevated" style={{ animationDelay: `${i * 80}ms` }} />
+        ))}
+        <div className="ml-auto h-7 w-20 animate-pulse rounded-lg bg-elevated" />
+      </div>
+      {/* Main content area */}
+      <div className="flex flex-1 flex-col gap-4 px-4 py-6">
+        <div className="h-6 w-40 animate-pulse rounded bg-elevated" />
+        <div className="h-4 w-56 animate-pulse rounded bg-elevated" />
+        <div className="mt-2 h-48 w-full animate-pulse rounded-lg bg-elevated" />
+        <div className="h-24 w-full animate-pulse rounded-lg bg-elevated" />
+        <div className="h-24 w-full animate-pulse rounded-lg bg-elevated" />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * SessionError
+ *
+ * Shown when the session fetch fails or the session is not found.
+ * Gives the user a readable message and a retry button.
+ */
+function SessionError({ message, onRetry }) {
+  return (
+    <div data-theme="workshop" className="flex min-h-screen flex-col items-center justify-center gap-6 bg-base px-6 text-center">
+      <div className="flex flex-col items-center gap-3">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <circle cx="20" cy="20" r="19" stroke="var(--color-error,#e55)" strokeWidth="1.5" strokeOpacity="0.5" />
+          <path d="M20 12v10M20 26v2" stroke="var(--color-error,#e55)" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+        <p className="font-display text-lg font-medium text-primary">
+          {message === "Session not found" ? "Session not found" : "Failed to load session"}
+        </p>
+        <p className="max-w-xs font-body text-sm text-muted">
+          {message || "Something went wrong loading this session."}
+        </p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="rounded-lg border border-border bg-surface px-5 py-2.5 font-mono text-sm text-primary transition-colors hover:border-accent-line hover:text-accent"
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+/**
+ * PlanningStallBanner
+ *
+ * Shown after STALL_THRESHOLD ms if the planning SSE stream has not
+ * delivered any content yet. Tells the user the likely cause (model
+ * slowness or OpenRouter quota) without killing the stream.
+ */
+const STALL_THRESHOLD_MS = 30000
+
+function PlanningStallBanner({ streamUrl, hasContent }) {
+  const [stalled, setStalled] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!streamUrl || hasContent) {
+      setStalled(false)
+      return
+    }
+    const t = setTimeout(() => setStalled(true), STALL_THRESHOLD_MS)
+    return () => clearTimeout(t)
+  }, [streamUrl, hasContent])
+
+  if (!stalled) return null
+
+  return (
+    <div className="mx-4 mt-3 flex items-start gap-3 rounded-lg border border-border bg-elevated px-4 py-3">
+      <svg className="mt-0.5 shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" stroke="var(--text-muted)" strokeWidth="1.2" />
+        <path d="M8 5v4M8 11v1" stroke="var(--text-muted)" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+      <div className="flex flex-col gap-0.5">
+        <p className="font-mono text-xs font-semibold text-secondary">Planner is taking longer than usual</p>
+        <p className="font-body text-xs text-muted">
+          This can happen if the selected model is slow or your OpenRouter quota is under load.
+          You can change models via the <span className="font-semibold text-secondary">Models</span> button above and start a new task.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+
 export default function SessionPage() {
   const { id } = useParams()
   const { session, loading, error, refetch, stopPolling } = useSessionPolling(id)
@@ -143,6 +252,7 @@ export default function SessionPage() {
   const [coderModel, setCoderModel] = useState("poolside/laguna-m.1:free")
   const [showModels, setShowModels] = useState(false)
   const [planStreamUrl, setPlanStreamUrl] = useState(null)
+  const [planStreamContent, setPlanStreamContent] = useState(false)
   const [codeStreamUrl, setCodeStreamUrl] = useState(null)
   const [streamingTaskId, setStreamingTaskId] = useState(null)
 
@@ -173,6 +283,7 @@ export default function SessionPage() {
   useEffect(() => {
     if (session?.status === "planning") {
       setPlanStreamUrl(`/agent/session/${id}/stream-plan`)
+      setPlanStreamContent(false)
     } else {
       setPlanStreamUrl(null)
     }
@@ -195,24 +306,9 @@ export default function SessionPage() {
     setSplitPercent((prev) => Math.min(80, Math.max(20, prev + (deltaY / window.innerHeight) * 100)))
   }
 
-  if (loading) {
-    return (
-      <div data-theme="workshop" className="flex min-h-screen items-center justify-center bg-base">
-        <div className="flex items-center gap-2 text-muted">
-          <span className="h-4 w-4 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />
-          <span className="font-mono text-sm">Loading session…</span>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <SessionSkeleton />
 
-  if (error || !session) {
-    return (
-      <div data-theme="workshop" className="flex min-h-screen items-center justify-center bg-base">
-        <p className="font-mono text-sm text-error">{error || "Session not found"}</p>
-      </div>
-    )
-  }
+  if (error || !session) return <SessionError message={error || "Session not found"} onRetry={refetch} />
 
   const isPlanReview = session.status === "plan_review"
   const isPlanning = session.status === "planning"
