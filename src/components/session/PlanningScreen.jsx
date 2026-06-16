@@ -10,18 +10,23 @@ function shortLabel(path) {
   return parts.length > 1 ? `${parts[parts.length - 2]}/${parts[parts.length - 1]}` : path
 }
 
-// Ghost placeholder positions -- fixed so the graph isn't empty on load
-const GHOST_POSITIONS = [
-  { x: 100, y:  80 },
-  { x: 320, y:  80 },
-  { x:  70, y: 270 },
-  { x: 350, y: 270 },
+// Anchor sits in the upper third. Ghost nodes fan below it in a wide arc
+// so lines radiate downward -- no crossing, no X shape, no clipping.
+const CX_PLAN = 210
+const CY_PLAN = 120  // upper third of viewBox (0 0 420 350)
+const GHOST_ANGLES = [
+  Math.PI * 0.55,   // lower-left
+  Math.PI * 0.72,   // left
+  Math.PI * 0.88,   // lower-centre-left
+  Math.PI * 1.12,   // lower-centre-right
+  Math.PI * 1.28,   // right
 ]
+const GHOST_RADIUS = 155
 
-function buildLiveLayout(files, cx = 210, cy = 175, radius = 130) {
-  const cap = Math.min(files.length, 7)
+function buildLiveLayout(files, cx = CX_PLAN, cy = CY_PLAN, radius = GHOST_RADIUS) {
+  const cap = Math.min(files.length, 5)
   return files.slice(0, cap).map((path, i) => {
-    const angle = (i / Math.max(cap, 1)) * Math.PI * 1.6 - Math.PI * 0.3
+    const angle = GHOST_ANGLES[i] ?? (Math.PI * 0.6 + i * 0.35)
     const x = Math.round(cx + Math.cos(angle) * radius)
     const y = Math.round(cy + Math.sin(angle) * radius)
     return {
@@ -29,21 +34,24 @@ function buildLiveLayout(files, cx = 210, cy = 175, radius = 130) {
       x, y,
       r:     14,
       label: shortLabel(path),
-      path:  `M${cx},${cy} C${cx + (x - cx) * 0.4},${cy + (y - cy) * 0.2} ${cx + (x - cx) * 0.7},${cy + (y - cy) * 0.6} ${x},${y}`,
+      path:  `M${cx},${cy} C${Math.round(cx + (x - cx) * 0.35)},${Math.round(cy + (y - cy) * 0.15)} ${Math.round(cx + (x - cx) * 0.7)},${Math.round(cy + (y - cy) * 0.65)} ${x},${y}`,
     }
   })
 }
 
-function buildGhostNodes(cx = 210, cy = 175) {
-  return GHOST_POSITIONS.map((pos, i) => ({
-    id:      `ghost-${i}`,
-    x:       pos.x,
-    y:       pos.y,
-    r:       12,
-    label:   "",
-    ghost:   true,
-    path:    `M${cx},${cy} C${cx + (pos.x - cx) * 0.4},${cy + (pos.y - cy) * 0.2} ${cx + (pos.x - cx) * 0.7},${cy + (pos.y - cy) * 0.6} ${pos.x},${pos.y}`,
-  }))
+function buildGhostNodes(cx = CX_PLAN, cy = CY_PLAN) {
+  return GHOST_ANGLES.map((angle, i) => {
+    const x = Math.round(cx + Math.cos(angle) * GHOST_RADIUS)
+    const y = Math.round(cy + Math.sin(angle) * GHOST_RADIUS)
+    return {
+      id:    `ghost-${i}`,
+      x, y,
+      r:     12,
+      label: "",
+      ghost: true,
+      path:  `M${cx},${cy} C${Math.round(cx + (x - cx) * 0.35)},${Math.round(cy + (y - cy) * 0.15)} ${Math.round(cx + (x - cx) * 0.7)},${Math.round(cy + (y - cy) * 0.65)} ${x},${y}`,
+    }
+  })
 }
 
 /**
@@ -66,19 +74,16 @@ export default function PlanningScreen({ streamUrl }) {
     }
   }, [text])
 
-  const cx = 210
-  const cy = 175
-
   // Use real nodes if we have them, ghost nodes while waiting
   const affected = useMemo(
-    () => files.length > 0 ? buildLiveLayout(files, cx, cy) : buildGhostNodes(cx, cy),
+    () => files.length > 0 ? buildLiveLayout(files) : buildGhostNodes(),
     [files]
   )
 
   const changed = {
     id:    "forge-anchor",
-    x:     cx,
-    y:     cy,
+    x:     CX_PLAN,
+    y:     CY_PLAN,
     r:     22,
     label: done ? "plan ready" : "analysing…",
   }
@@ -100,7 +105,7 @@ export default function PlanningScreen({ streamUrl }) {
               />
             )}
           </div>
-          <div className={isShowingGhosts ? "opacity-30" : "opacity-100"} style={{ transition: "opacity 0.6s ease" }}>
+          <div className={isShowingGhosts ? "opacity-45" : "opacity-100"} style={{ transition: "opacity 0.6s ease" }}>
             <DependencyGraph
               viewBox="0 0 420 350"
               changed={changed}
