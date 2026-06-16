@@ -187,7 +187,11 @@ function ImpactPreview({ repoId, task }) {
       </div>
       <div className="flex flex-wrap gap-2">
         {files.map((f) => (
-          <span key={f.path} className="rounded-sm border border-border-2 bg-elevated px-2.5 py-1 font-mono text-xs text-secondary">
+          <span
+            key={f.path}
+            title={f.path}
+            className="max-w-[200px] truncate rounded-sm border border-border-2 bg-elevated px-2.5 py-1 font-mono text-xs text-secondary"
+          >
             {f.path}
           </span>
         ))}
