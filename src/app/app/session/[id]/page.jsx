@@ -135,7 +135,7 @@ function FailedState() {
 /* ─── Main page ───────────────────────────────────────────────────── */
 export default function SessionPage() {
   const { id } = useParams()
-  const { session, loading, error, refetch } = useSessionPolling(id)
+  const { session, loading, error, refetch, stopPolling } = useSessionPolling(id)
 
   const [splitPercent, setSplitPercent] = useState(60)
   const [activeTask, setActiveTask] = useState(null)
@@ -236,7 +236,7 @@ export default function SessionPage() {
 
       {isPlanReview && (
         <div className="flex-1 overflow-hidden overflow-y-auto">
-          <PlanReview session={session} onApproved={() => refetch()} onReplanned={() => refetch()} />
+          <PlanReview session={session} onApproved={() => refetch()} onReplanned={() => refetch()} stopPolling={stopPolling} />
         </div>
       )}
 
