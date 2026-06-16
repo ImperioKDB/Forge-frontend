@@ -230,8 +230,9 @@ export default function DependencyGraph({
                 cx={node.x}
                 cy={node.y}
                 r={node.r}
-                fill="var(--accent-soft)"
-                stroke="var(--accent)"
+                fill="var(--accent, #3DBA6F)"
+                fillOpacity={0.12}
+                stroke="var(--accent, #3DBA6F)"
                 strokeWidth={2}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={
