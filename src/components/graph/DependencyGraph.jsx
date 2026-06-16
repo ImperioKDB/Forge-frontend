@@ -254,7 +254,7 @@ export default function DependencyGraph({
                 className="font-mono"
                 fontSize={10}
                 fontWeight={600}
-                fill="var(--accent)"
+                fill="var(--accent, #3DBA6F)"
                 initial={{ opacity: 0, y: node.y + node.r + 22 }}
                 animate={
                   inView
