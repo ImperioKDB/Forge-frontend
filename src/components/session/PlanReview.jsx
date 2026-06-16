@@ -134,7 +134,7 @@ function buildRealLayout(tasks, subNodes, subEdges) {
   }
 }
 
-export default function PlanReview({ session, onApproved }) {
+export default function PlanReview({ session, onApproved, stopPolling }) {
   const { addToast } = useToast()
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState(null)
@@ -161,6 +161,9 @@ export default function PlanReview({ session, onApproved }) {
   )
 
   async function handleApprove() {
+    // Halt the polling interval before the POST so a background poll
+    // cannot overwrite session.status mid-transition and cause a 409.
+    stopPolling?.()
     setError(null)
     setLoading(true)
     try {
@@ -213,11 +216,28 @@ export default function PlanReview({ session, onApproved }) {
 
       {/* ── Impact map (real graph or loading skeleton) ── */}
       <div>
-        <div className="mb-2.5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
-          Impact map
-          {graphLoading && (
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-          )}
+        <div className="mb-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
+            Impact map
+            {graphLoading && (
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+            )}
+          </div>
+          {/* Legend — tells users what filled vs outlined nodes mean */}
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                <circle cx="5" cy="5" r="4.5" fill="var(--color-accent,#3DBA6F)" fillOpacity="0.9" />
+              </svg>
+              Changed
+            </span>
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                <circle cx="5" cy="5" r="4" fill="none" stroke="var(--color-accent,#3DBA6F)" strokeWidth="1.5" />
+              </svg>
+              Affected
+            </span>
+          </div>
         </div>
         <div className="overflow-hidden rounded-lg border border-border bg-surface p-2">
           {graph ? (
@@ -226,6 +246,7 @@ export default function PlanReview({ session, onApproved }) {
               changed={graph.changed}
               affected={graph.affected}
               untouched={graph.untouched}
+              showAnchorLabel={true}
               className="aspect-square"
             />
           ) : (
