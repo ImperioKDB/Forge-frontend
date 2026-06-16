@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { PATGuide } from '@/components/ui/PATGuide'
 
 const CATALOGUE = {
   INSUFFICIENT_CREDITS: {
@@ -65,50 +66,6 @@ const CATALOGUE = {
 
 function fallback(msg) {
   return { title: 'An error occurred', why: msg || 'An unexpected error happened. Please try again.', next: [{ label: 'Try again', action: 'retry', primary: true }], severity: 'error' }
-}
-
-export function PATGuide({ compact = false }) {
-  const steps = [
-    { n: '01', title: 'Open GitHub settings', detail: 'Go to github.com, click your profile photo, then Settings' },
-    { n: '02', title: 'Developer Settings', detail: 'Scroll to the bottom of the sidebar and click "Developer settings"' },
-    { n: '03', title: 'Fine-grained tokens', detail: 'Click "Personal access tokens", then "Fine-grained tokens"' },
-    { n: '04', title: 'Generate new token', detail: 'Click "Generate new token", give it a name and set an expiry' },
-    { n: '05', title: 'Set permissions', detail: 'Repository permissions: Contents = Read and write, Metadata = Read' },
-    { n: '06', title: 'Copy your token', detail: 'Click "Generate token" and copy immediately. It will not be shown again.' },
-  ]
-
-  if (compact) {
-    return (
-      <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs" style={{ color: 'var(--accent)' }}>
-        Create a PAT on GitHub →
-      </a>
-    )
-  }
-
-  return (
-    <div className="rounded-lg flex flex-col gap-4"
-      style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)', padding: '16px' }}
-      role="region" aria-label="How to create a GitHub PAT">
-      <p className="font-mono text-xs uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>How to create a GitHub PAT</p>
-      <div className="flex flex-col gap-3">
-        {steps.map(({ n, title, detail }) => (
-          <div key={n} className="flex gap-3">
-            <span className="font-mono text-xs shrink-0 w-6 mt-0.5" style={{ color: 'var(--accent)', opacity: 0.7 }}>{n}</span>
-            <div className="flex flex-col gap-0.5">
-              <span className="font-body text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{title}</span>
-              <span className="font-body text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{detail}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 self-start"
-        style={{ background: 'var(--accent)', color: '#fff' }}>
-        Open GitHub token page →
-      </a>
-    </div>
-  )
 }
 
 export default function ErrorDisplay({ code, message, onRetry, compact = false, retryAfter = null }) {
