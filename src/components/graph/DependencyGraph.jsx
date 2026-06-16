@@ -54,7 +54,8 @@ export default function DependencyGraph({
   untouched = [],
   viewBox = "0 0 460 460",
   className = "",
-  once = false, // false = re-trigger every time it scrolls into view
+  once = false,        // false = re-trigger every time it scrolls into view
+  showAnchorLabel = true, // set false to suppress the anchor file label
 }) {
   const ref = useRef(null)
   const reduceMotion = useReducedMotion()
@@ -274,41 +275,60 @@ export default function DependencyGraph({
         {/* ─── Changed node (centre, always solid) ─── */}
         {changed && (
           <g>
+            {/* Outer glow ring */}
+            <motion.circle
+              cx={changed.x}
+              cy={changed.y}
+              r={changed.r + 6}
+              fill="none"
+              stroke="var(--accent, #3DBA6F)"
+              strokeWidth={1}
+              opacity={0.3}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 0.3 }}
+              transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
+              style={{ transformOrigin: `${changed.x}px ${changed.y}px` }}
+            />
+            {/* Main filled circle — accent so it pops on dark backgrounds */}
             <motion.circle
               cx={changed.x}
               cy={changed.y}
               r={changed.r}
-              fill="var(--ink, var(--text-primary))"
-              stroke="var(--ink, var(--text-primary))"
+              fill="var(--accent, #3DBA6F)"
+              stroke="var(--accent, #3DBA6F)"
               strokeWidth={2.5}
               initial={{ scale: 0.85 }}
               animate={{ scale: [0.85, 1.04, 1] }}
               transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
               style={{ transformOrigin: `${changed.x}px ${changed.y}px` }}
             />
+            {/* Label ABOVE: "primary" badge in muted mono */}
             <text
               x={changed.x}
-              y={changed.y - changed.r - 12}
+              y={changed.y - changed.r - 10}
               textAnchor="middle"
               className="font-mono"
-              fontSize={10}
-              fontWeight={700}
-              letterSpacing="0.16em"
-              fill="var(--ink, var(--text-primary))"
-            >
-              CHANGED
-            </text>
-            <text
-              x={changed.x}
-              y={changed.y + changed.r + 18}
-              textAnchor="middle"
-              className="font-mono"
-              fontSize={10}
+              fontSize={9}
               fontWeight={600}
-              fill="var(--ink, var(--text-primary))"
+              letterSpacing="0.14em"
+              fill="var(--text-muted, #888)"
             >
-              {changed.label}
+              PRIMARY
             </text>
+            {/* File label BELOW: always white/primary so it reads on any bg */}
+            {showAnchorLabel && changed.label && (
+              <text
+                x={changed.x}
+                y={changed.y + changed.r + 18}
+                textAnchor="middle"
+                className="font-mono"
+                fontSize={10}
+                fontWeight={600}
+                fill="var(--text-primary, #fff)"
+              >
+                {changed.label}
+              </text>
+            )}
           </g>
         )}
       </svg>
