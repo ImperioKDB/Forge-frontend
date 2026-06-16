@@ -161,11 +161,21 @@ export default function PlanReview({ session, onApproved, stopPolling }) {
   )
 
   async function handleApprove() {
-    // Halt the polling interval before the POST so a background poll
-    // cannot overwrite session.status mid-transition and cause a 409.
+    // Guard: if the session has already moved past plan_review (e.g. the
+    // user approved on another tab, or Render recovered the session),
+    // don't fire the POST — just advance the UI to the current status.
+    if (session.status !== "plan_review") {
+      addToast({ message: "Plan already approved — continuing", type: "warning" })
+      onApproved()
+      return
+    }
+
+    // Halt polling so a background refetch cannot overwrite session.status
+    // between this POST and the onApproved() callback.
     stopPolling?.()
     setError(null)
     setLoading(true)
+
     try {
       if (feedback.trim()) {
         await apiFetch("/agent/edit-plan", {
@@ -180,6 +190,13 @@ export default function PlanReview({ session, onApproved, stopPolling }) {
       addToast({ message: "Plan approved — coding started", type: "success" })
       onApproved()
     } catch (err) {
+      // If we get a 409, the session already moved past plan_review.
+      // Advance the UI rather than showing a confusing error.
+      if (err.message?.includes("plan_review") || err.status === 409 || String(err).includes("409")) {
+        addToast({ message: "Already approved — advancing to coding", type: "warning" })
+        onApproved()
+        return
+      }
       setError(err.message)
       addToast({ message: err.message, type: "error" })
     } finally {
@@ -292,9 +309,23 @@ export default function PlanReview({ session, onApproved, stopPolling }) {
       </div>
 
       {error && (
-        <Card variant="danger" padding="sm">
-          <p className="font-body text-sm text-error">{error}</p>
-        </Card>
+        <div className="flex items-start gap-3 rounded-lg border border-error border-opacity-40 bg-surface px-4 py-3">
+          <svg className="mt-0.5 shrink-0" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <circle cx="7" cy="7" r="6.3" stroke="var(--color-error,#e55)" strokeWidth="1.2" />
+            <path d="M7 4.5v3.5M7 9.5v.5" stroke="var(--color-error,#e55)" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className="font-mono text-xs font-semibold text-error">Approval failed</p>
+            <p className="font-body text-xs text-muted">{error}</p>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="shrink-0 font-mono text-[11px] text-muted hover:text-primary"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
       )}
 
       <div className="flex gap-3">
