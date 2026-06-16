@@ -1,72 +1,159 @@
 "use client"
 
-import { useRef, useEffect, useMemo } from "react"
+import { useRef, useEffect, useMemo, useState } from "react"
 import DependencyGraph from "@/components/graph/DependencyGraph"
 import { usePlannerTrace } from "@/lib/hooks/usePlannerTrace"
+
+const ACCENT   = "#3DBA6F"
+const VB_W     = 420
+const VB_H     = 300
+const CX       = VB_W / 2        // 210
+const CY       = 110              // upper third -- fan nodes go below
+
+// Five fan positions radiating downward from the anchor
+const GHOST_ANGLES = [
+  Math.PI * 0.58,
+  Math.PI * 0.74,
+  Math.PI * 0.90,
+  Math.PI * 1.10,
+  Math.PI * 1.26,
+]
+const GHOST_R = 130
+
+function ghostPos(angle) {
+  return {
+    x: Math.round(CX + Math.cos(angle) * GHOST_R),
+    y: Math.round(CY + Math.sin(angle) * GHOST_R),
+  }
+}
+
+function cubicD(x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1
+  return `M${x1},${y1} C${Math.round(x1+dx*0.35-dy*0.12)},${Math.round(y1+dy*0.35+dx*0.12)} ${Math.round(x1+dx*0.7-dy*0.12)},${Math.round(y1+dy*0.7+dx*0.12)} ${x2},${y2}`
+}
 
 function shortLabel(path) {
   if (!path) return ""
   const parts = path.split("/")
-  return parts.length > 1 ? `${parts[parts.length - 2]}/${parts[parts.length - 1]}` : path
+  return parts.length > 1 ? `${parts[parts.length-2]}/${parts[parts.length-1]}` : path
 }
 
-// Anchor sits in the upper third. Ghost nodes fan below it in a wide arc
-// so lines radiate downward -- no crossing, no X shape, no clipping.
-const CX_PLAN = 210
-const CY_PLAN = 120  // upper third of viewBox (0 0 420 350)
-const GHOST_ANGLES = [
-  Math.PI * 0.55,   // lower-left
-  Math.PI * 0.72,   // left
-  Math.PI * 0.88,   // lower-centre-left
-  Math.PI * 1.12,   // lower-centre-right
-  Math.PI * 1.28,   // right
-]
-const GHOST_RADIUS = 155
+/**
+ * GhostGraph
+ *
+ * Renders the planning loading state entirely in SVG with hard-coded
+ * accent colours so no CSS variable lookup is needed. Five ghost nodes
+ * fan below the anchor with a pulsing ring animation.
+ *
+ * Replaced by the real DependencyGraph once file paths arrive.
+ */
+function GhostGraph() {
+  return (
+    <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="w-full h-full" aria-hidden="true">
+      {/* Ghost edges */}
+      {GHOST_ANGLES.map((angle, i) => {
+        const { x, y } = ghostPos(angle)
+        return (
+          <path
+            key={i}
+            d={cubicD(CX, CY, x, y)}
+            fill="none"
+            stroke={ACCENT}
+            strokeWidth={1.2}
+            opacity={0.25}
+          />
+        )
+      })}
 
-function buildLiveLayout(files, cx = CX_PLAN, cy = CY_PLAN, radius = GHOST_RADIUS) {
+      {/* Ghost nodes */}
+      {GHOST_ANGLES.map((angle, i) => {
+        const { x, y } = ghostPos(angle)
+        return (
+          <circle
+            key={i}
+            cx={x} cy={y} r={11}
+            fill="none"
+            stroke={ACCENT}
+            strokeWidth={1.5}
+            opacity={0.35}
+            style={{ animation: `forge-ghost-pulse 2.2s ease-in-out ${i * 0.22}s infinite` }}
+          />
+        )
+      })}
+
+      {/* Anchor pulsing outer ring */}
+      <circle
+        cx={CX} cy={CY} r={32}
+        fill="none"
+        stroke={ACCENT}
+        strokeWidth={1}
+        opacity={0.2}
+        style={{ animation: "forge-ghost-pulse 1.8s ease-in-out infinite" }}
+      />
+
+      {/* Anchor filled circle */}
+      <circle cx={CX} cy={CY} r={22} fill={ACCENT} opacity={0.9} />
+
+      {/* "PRIMARY" label above anchor */}
+      <text
+        x={CX} y={CY - 30}
+        textAnchor="middle"
+        fontFamily="monospace"
+        fontSize={9}
+        letterSpacing="0.14em"
+        fill="#888"
+      >
+        PRIMARY
+      </text>
+
+      {/* "analysing..." label below anchor */}
+      <text
+        x={CX} y={CY + 38}
+        textAnchor="middle"
+        fontFamily="monospace"
+        fontSize={10}
+        fill="#aaa"
+      >
+        analysing…
+      </text>
+
+      <style>{`
+        @keyframes forge-ghost-pulse {
+          0%,100% { opacity: 0.35; }
+          50%      { opacity: 0.08; }
+        }
+      `}</style>
+    </svg>
+  )
+}
+
+function buildLiveLayout(files) {
   const cap = Math.min(files.length, 5)
   return files.slice(0, cap).map((path, i) => {
     const angle = GHOST_ANGLES[i] ?? (Math.PI * 0.6 + i * 0.35)
-    const x = Math.round(cx + Math.cos(angle) * radius)
-    const y = Math.round(cy + Math.sin(angle) * radius)
+    const { x, y } = ghostPos(angle)
     return {
       id:    `live-${i}`,
-      x, y,
-      r:     14,
+      x, y, r: 14,
       label: shortLabel(path),
-      path:  `M${cx},${cy} C${Math.round(cx + (x - cx) * 0.35)},${Math.round(cy + (y - cy) * 0.15)} ${Math.round(cx + (x - cx) * 0.7)},${Math.round(cy + (y - cy) * 0.65)} ${x},${y}`,
-    }
-  })
-}
-
-function buildGhostNodes(cx = CX_PLAN, cy = CY_PLAN) {
-  return GHOST_ANGLES.map((angle, i) => {
-    const x = Math.round(cx + Math.cos(angle) * GHOST_RADIUS)
-    const y = Math.round(cy + Math.sin(angle) * GHOST_RADIUS)
-    return {
-      id:    `ghost-${i}`,
-      x, y,
-      r:     12,
-      label: "",
-      ghost: true,
-      path:  `M${cx},${cy} C${Math.round(cx + (x - cx) * 0.35)},${Math.round(cy + (y - cy) * 0.15)} ${Math.round(cx + (x - cx) * 0.7)},${Math.round(cy + (y - cy) * 0.65)} ${x},${y}`,
+      path:  cubicD(CX, CY, x, y),
     }
   })
 }
 
 /**
- * FORGE -- PlanningScreen
+ * FORGE — PlanningScreen
  *
  * Full-bleed planning state visualiser.
  *
- * Top half:  live DependencyGraph. Shows ghost placeholder nodes while
- *            the planner stream hasn't named any files yet, then swaps
- *            them for real file nodes as they appear in the stream.
- * Bottom:    scrolling mono trace log of the raw plan text.
+ * Top 60%: GhostGraph while no files named yet; switches to real
+ *          DependencyGraph as file paths arrive from the SSE stream.
+ * Bottom:  Scrolling mono trace log with blinking cursor.
  */
 export default function PlanningScreen({ streamUrl }) {
   const { text, files, done } = usePlannerTrace(streamUrl)
-  const logRef = useRef(null)
+  const logRef  = useRef(null)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     if (logRef.current) {
@@ -74,78 +161,103 @@ export default function PlanningScreen({ streamUrl }) {
     }
   }, [text])
 
-  // Use real nodes if we have them, ghost nodes while waiting
+  // Animate the "tracing..." dot to cycle through 1, 2, 3 dots
+  useEffect(() => {
+    if (done) return
+    const t = setInterval(() => setTick(p => (p + 1) % 3), 600)
+    return () => clearInterval(t)
+  }, [done])
+
   const affected = useMemo(
-    () => files.length > 0 ? buildLiveLayout(files) : buildGhostNodes(),
+    () => files.length > 0 ? buildLiveLayout(files) : [],
     [files]
   )
 
-  const changed = {
-    id:    "forge-anchor",
-    x:     CX_PLAN,
-    y:     CY_PLAN,
-    r:     22,
+  const liveChanged = {
+    id: "forge-anchor", x: CX, y: CY, r: 22,
     label: done ? "plan ready" : "analysing…",
   }
 
-  const isShowingGhosts = files.length === 0
+  const showGhost = files.length === 0
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
 
-      {/* ── Live graph ── */}
-      <div className="shrink-0 border-b border-border bg-surface" style={{ height: "52%" }}>
-        <div className="mx-auto h-full max-w-lg px-4 py-3">
-          <div className="mb-1.5 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
-            {done ? "impact map" : "tracing…"}
-            {isShowingGhosts && !done && (
-              <span
-                className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-                style={{ animation: "forge-pulse 1.4s ease-in-out infinite" }}
-              />
-            )}
-          </div>
-          <div className={isShowingGhosts ? "opacity-45" : "opacity-100"} style={{ transition: "opacity 0.6s ease" }}>
-            <DependencyGraph
-              viewBox="0 0 420 350"
-              changed={changed}
-              affected={affected}
-              untouched={[]}
-              once={false}
-              className="h-full w-full"
-            />
-          </div>
-        </div>
+      {/* ── Header bar ── */}
+      <div className="flex shrink-0 items-center gap-2 px-4 py-2.5 border-b border-border">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{
+            background: ACCENT,
+            animation: done ? "none" : "forge-pulse 1.2s ease-in-out infinite",
+          }}
+        />
+        <span className="font-mono text-xs tracking-widest uppercase text-muted">
+          {done ? "Impact map" : `Tracing${".".repeat(tick + 1)}`}
+        </span>
+        {files.length > 0 && (
+          <span className="ml-auto font-mono text-[10px] text-muted">
+            {files.length} file{files.length !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
-      {/* ── Scrolling trace log ── */}
-      <div className="relative flex min-h-0 flex-1 flex-col bg-elevated">
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-            style={{ animation: done ? "none" : "forge-pulse 1.2s ease-in-out infinite" }}
+      {/* ── Graph area ── */}
+      <div
+        className="shrink-0 bg-surface flex items-center justify-center"
+        style={{ height: "52%", minHeight: "220px" }}
+      >
+        {showGhost ? (
+          <div className="w-full h-full p-2">
+            <GhostGraph />
+          </div>
+        ) : (
+          <DependencyGraph
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            changed={liveChanged}
+            affected={affected}
+            untouched={[]}
+            once={false}
+            showAnchorLabel={false}
+            className="w-full h-full"
           />
-          <span className="font-mono text-[11px] text-muted">
-            {done ? "planning complete" : "planning…"}
+        )}
+      </div>
+
+      {/* ── Trace log ── */}
+      <div className="relative flex min-h-0 flex-1 flex-col bg-elevated border-t border-border">
+        <div className="flex shrink-0 items-center gap-2 px-4 py-2 border-b border-border">
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{
+              background: ACCENT,
+              animation: done ? "none" : "forge-pulse 1.4s ease-in-out infinite",
+            }}
+          />
+          <span className="font-mono text-[11px] text-secondary">
+            {done ? "Planning complete" : "planning…"}
           </span>
-          {files.length > 0 && (
-            <span className="ml-auto font-mono text-[10px] text-muted">
-              {files.length} file{files.length !== 1 ? "s" : ""} identified
-            </span>
-          )}
         </div>
 
-        <div ref={logRef} className="flex-1 overflow-y-auto px-4 py-3" style={{ scrollBehavior: "smooth" }}>
-          {!text && (
-            <span className="font-mono text-xs text-muted">Connecting to planner…</span>
-          )}
-          {text && (
-            <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-secondary">
+        <div
+          ref={logRef}
+          className="flex-1 overflow-y-auto px-4 py-3"
+          style={{ scrollBehavior: "smooth" }}
+        >
+          {!text ? (
+            <span className="font-mono text-xs text-secondary opacity-60">
+              Connecting to planner…
+            </span>
+          ) : (
+            <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-secondary">
               {text}
               {!done && (
                 <span
-                  className="ml-0.5 inline-block h-3 w-1.5 bg-accent align-text-bottom"
-                  style={{ animation: "forge-blink 530ms step-end infinite" }}
+                  className="ml-0.5 inline-block h-3 w-[5px] align-text-bottom"
+                  style={{
+                    background: ACCENT,
+                    animation: "forge-blink 530ms step-end infinite",
+                  }}
                 />
               )}
             </pre>
@@ -154,8 +266,8 @@ export default function PlanningScreen({ streamUrl }) {
       </div>
 
       <style>{`
-        @keyframes forge-pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
-        @keyframes forge-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        @keyframes forge-pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        @keyframes forge-blink  { 0%,100%{opacity:1} 50%{opacity:0}   }
       `}</style>
     </div>
   )
