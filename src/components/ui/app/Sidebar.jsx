@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useCallback, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useSessions } from "@/lib/hooks/useSessions"
 import { apiFetch } from "@/lib/supabase/api"
@@ -42,49 +42,134 @@ function SidebarSkeleton() {
 }
 
 /**
- * SessionItem
+ * SessionItemMenu
  *
- * Long-press (500ms) to reveal a delete button inline.
- * Tap elsewhere to dismiss. Swipe is reserved for the drawer close gesture.
+ * A dropdown menu triggered by a visible "..." button on each session item.
+ * Replaces the non-discoverable long-press interaction that conflicted with
+ * the browser's native context menu on mobile.
  */
-function SessionItem({ session, isActive, onNavigate, onDelete }) {
-  const pressTimer = useRef(null)
-  const [showDelete, setShowDelete] = useState(false)
-  const [deleting, setDeleting]     = useState(false)
+function SessionItemMenu({ sessionId, onDelete }) {
+  const [open, setOpen] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const menuRef = useRef(null)
+  const buttonRef = useRef(null)
 
-  function startPress() {
-    pressTimer.current = setTimeout(() => setShowDelete(true), 500)
-  }
-  function cancelPress() {
-    clearTimeout(pressTimer.current)
-  }
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target) &&
+          buttonRef.current && !buttonRef.current.contains(e.target)) {
+        setOpen(false)
+        setConfirming(false)
+      }
+    }
+    function handleEscape(e) {
+      if (e.key === "Escape") {
+        setOpen(false)
+        setConfirming(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    document.addEventListener("keydown", handleEscape)
+    return () => {
+      document.removeEventListener("mousedown", handleClick)
+      document.removeEventListener("keydown", handleEscape)
+    }
+  }, [open])
 
-  async function handleDelete(e) {
-    e.stopPropagation()
+  async function handleDelete() {
     setDeleting(true)
-    await onDelete(session.id)
+    await onDelete(sessionId)
     setDeleting(false)
-    setShowDelete(false)
+    setOpen(false)
+    setConfirming(false)
   }
 
   return (
-    <div className="relative mx-1">
+    <div className="relative shrink-0">
       <button
-        onMouseDown={startPress}
-        onMouseUp={cancelPress}
-        onMouseLeave={cancelPress}
-        onTouchStart={startPress}
-        onTouchEnd={cancelPress}
-        onClick={() => {
-          if (showDelete) { setShowDelete(false); return }
-          onNavigate(session.id)
-        }}
-        className={`block w-full rounded-md border-l-2 px-2 py-2.5 text-left transition-all duration-fast ${
-          isActive
-            ? "border-accent bg-elevated"
-            : "border-transparent hover:bg-elevated"
-        }`}
-        style={{ minHeight: "44px" }}
+        ref={buttonRef}
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); setConfirming(false) }}
+        className="flex h-[44px] w-[44px] items-center justify-center rounded-md text-muted transition-colors duration-fast hover:bg-elevated hover:text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        aria-label="Session options"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        type="button"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="8" cy="4" r="1.4" />
+          <circle cx="8" cy="8" r="1.4" />
+          <circle cx="8" cy="12" r="1.4" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          ref={menuRef}
+          role="menu"
+          className="absolute right-0 top-full z-[70] mt-1 min-w-[160px] rounded-md border border-border bg-elevated py-1 shadow-panel"
+          style={{ animation: "forge-menu-in 120ms ease-out" }}
+        >
+          {!confirming ? (
+            <button
+              role="menuitem"
+              onClick={(e) => { e.stopPropagation(); setConfirming(true) }}
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 font-mono text-xs text-error transition-colors duration-fast hover:bg-error hover:bg-opacity-10"
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                <path d="M2 3.5h9M4 3.5V2.5h5v1M3 3.5l.6 7.5h5.8l.6-7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Delete session
+            </button>
+          ) : (
+            <div className="px-3 py-2.5">
+              <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted">
+                Confirm delete?
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirming(false) }}
+                  className="rounded-md border border-border px-2.5 py-1.5 font-mono text-[11px] text-muted transition-colors duration-fast hover:bg-surface hover:text-primary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete() }}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 rounded-md bg-error bg-opacity-15 px-2.5 py-1.5 font-mono text-[11px] text-error transition-colors duration-fast hover:bg-opacity-25 disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <span className="h-3 w-3 animate-spin rounded-full border border-error border-t-transparent" />
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                      <path d="M1.5 3h8M4 3V2h3v1M2.5 3l.5 6h5l.5-6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SessionItem({ session, isActive, onNavigate, onDelete }) {
+  return (
+    <div
+      className={`group relative mx-1 flex items-stretch gap-0.5 rounded-md border-l-2 transition-all duration-fast ${
+        isActive
+          ? "border-accent bg-elevated"
+          : "border-transparent hover:bg-elevated"
+      }`}
+      style={{ minHeight: "64px" }}
+    >
+      <button
+        onClick={() => onNavigate(session.id)}
+        className="flex min-w-0 flex-1 flex-col justify-center px-2 py-2.5 text-left"
       >
         <p className={`mb-1.5 truncate font-body text-sm font-medium leading-snug ${
           isActive ? "text-primary" : "text-secondary"
@@ -99,39 +184,9 @@ function SessionItem({ session, isActive, onNavigate, onDelete }) {
         </div>
       </button>
 
-      {/* Delete overlay — slides in on long-press */}
-      {showDelete && (
-        <div
-          className="absolute inset-0 flex items-center justify-between rounded-md border border-error border-opacity-30 bg-elevated px-3"
-          style={{ animation: "forge-slide-in 120ms ease-out" }}
-        >
-          <span className="font-mono text-[11px] text-muted">Delete session?</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowDelete(false)}
-              className="font-mono text-xs text-muted hover:text-primary"
-            >
-              Keep
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex items-center gap-1.5 rounded-md bg-error bg-opacity-10 px-2.5 py-1 font-mono text-xs text-error hover:bg-opacity-20"
-            >
-              {deleting ? (
-                <span className="h-3 w-3 animate-spin rounded-full border border-error border-t-transparent" />
-              ) : (
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-                  <path d="M1.5 3h8M4 3V2h3v1M2.5 3l.5 6h5l.5-6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
-
-      <style>{`@keyframes forge-slide-in { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }`}</style>
+      <div className={`flex items-center pr-1 ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity duration-fast`}>
+        <SessionItemMenu sessionId={session.id} onDelete={onDelete} />
+      </div>
     </div>
   )
 }
@@ -142,7 +197,9 @@ function SessionItem({ session, isActive, onNavigate, onDelete }) {
  * Desktop: collapsible width (52px collapsed / 236px open).
  * Mobile: slide-over drawer with scrim, swipe-left to close.
  *
- * Session items support long-press (500ms) to reveal a delete action.
+ * Session items feature a visible "..." menu button for delete and
+ * other actions. This replaces the non-discoverable long-press
+ * interaction that conflicted with browser native context menus.
  */
 export default function Sidebar({ open, onClose, selectedRepoId, isMobile }) {
   const router   = useRouter()
@@ -293,6 +350,13 @@ export default function Sidebar({ open, onClose, selectedRepoId, isMobile }) {
           </button>
         </div>
       )}
+
+      <style>{`
+        @keyframes forge-menu-in {
+          from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </aside>
   )
 }
