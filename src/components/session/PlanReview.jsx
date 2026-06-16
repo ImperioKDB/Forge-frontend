@@ -161,17 +161,7 @@ export default function PlanReview({ session, onApproved, stopPolling }) {
   )
 
   async function handleApprove() {
-    // Guard: if the session has already moved past plan_review (e.g. the
-    // user approved on another tab, or Render recovered the session),
-    // don't fire the POST — just advance the UI to the current status.
-    if (session.status !== "plan_review") {
-      addToast({ message: "Plan already approved — continuing", type: "warning" })
-      onApproved()
-      return
-    }
-
-    // Halt polling so a background refetch cannot overwrite session.status
-    // between this POST and the onApproved() callback.
+    // Stop the 3s poll so it can't race with our POST.
     stopPolling?.()
     setError(null)
     setLoading(true)
@@ -187,18 +177,19 @@ export default function PlanReview({ session, onApproved, stopPolling }) {
         method: "POST",
         body: JSON.stringify({ session_id: session.id }),
       })
-      addToast({ message: "Plan approved — coding started", type: "success" })
+      // Success: trigger the 500ms transition poll in the session page.
       onApproved()
     } catch (err) {
-      // If we get a 409, the session already moved past plan_review.
-      // Advance the UI rather than showing a confusing error.
-      if (err.message?.includes("plan_review") || err.status === 409 || String(err).includes("409")) {
-        addToast({ message: "Already approved — advancing to coding", type: "warning" })
+      const is409 = err.status === 409
+        || String(err.message).includes("409")
+        || String(err.message).includes("plan_review")
+      if (is409) {
+        // Session already moved past plan_review (e.g. duplicate tap).
+        // Start the poll so the UI transitions to whatever state it's in.
         onApproved()
         return
       }
       setError(err.message)
-      addToast({ message: err.message, type: "error" })
     } finally {
       setLoading(false)
     }
