@@ -277,7 +277,7 @@ export default function PlanReview({ session, onApproved, stopPolling }) {
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="truncate font-mono text-xs text-secondary">{task.file_path}</span>
-                <p className="font-body text-xs leading-relaxed text-muted">{task.instruction}</p>
+                <p className="font-body text-sm leading-relaxed text-secondary">{task.instruction}</p>
                 <StatusDot status={task.status} size="xs" />
               </div>
             </div>
