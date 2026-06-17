@@ -210,8 +210,9 @@ function SessionError({ message, onRetry }) {
  */
 const STALL_THRESHOLD_MS = 30000
 
-function PlanningStallBanner({ streamUrl, hasContent }) {
+function PlanningStallBanner({ streamUrl, hasContent, sessionId, onCancelled }) {
   const [stalled, setStalled] = React.useState(false)
+  const [cancelling, setCancelling] = React.useState(false)
 
   React.useEffect(() => {
     if (!streamUrl || hasContent) {
@@ -224,18 +225,37 @@ function PlanningStallBanner({ streamUrl, hasContent }) {
 
   if (!stalled) return null
 
+  async function handleCancel() {
+    setCancelling(true)
+    try {
+      await apiFetch(`/agent/session/${sessionId}/cancel`, { method: "POST" })
+      onCancelled?.()
+    } catch (err) {
+      console.error("Cancel failed:", err.message)
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   return (
     <div className="mx-4 mt-3 flex items-start gap-3 rounded-lg border border-border bg-elevated px-4 py-3">
       <svg className="mt-0.5 shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="8" cy="8" r="7" stroke="var(--text-muted)" strokeWidth="1.2" />
         <path d="M8 5v4M8 11v1" stroke="var(--text-muted)" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-1 flex-col gap-0.5">
         <p className="font-mono text-xs font-semibold text-secondary">Planner is taking longer than usual</p>
         <p className="font-body text-xs text-muted">
           This can happen if the selected model is slow or your OpenRouter quota is under load.
-          You can change models via the <span className="font-semibold text-secondary">Models</span> button above and start a new task.
+          You can change models via the <span className="font-semibold text-secondary">Models</span> button above, or cancel below.
         </p>
+        <button
+          onClick={handleCancel}
+          disabled={cancelling}
+          className="mt-2 self-start rounded-md border border-border px-3 py-1.5 font-mono text-[11px] text-secondary transition-colors duration-fast hover:border-error hover:text-error disabled:opacity-50"
+        >
+          {cancelling ? "Cancelling…" : "Cancel task"}
+        </button>
       </div>
     </div>
   )
@@ -355,7 +375,7 @@ export default function SessionPage() {
       {(isPlanning || isCoding || isAwaitingApproval || isDone || isFailed) && (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="overflow-hidden" style={{ height: `${splitPercent}%` }}>
-            {isPlanning && <PlanningScreen streamUrl={planStreamUrl} />}
+            {isPlanning && <PlanningScreen streamUrl={planStreamUrl} sessionId={id} onCancelled={() => refetch()} />}
             {isCoding && (codeStreamUrl ? <StreamingOutput streamUrl={codeStreamUrl} title="Generating code…" language="typescript" /> : <CodingFallback tasks={tasks} />)}
             {(isAwaitingApproval || isDone) && (
               <CodeReview
