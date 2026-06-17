@@ -6,6 +6,17 @@ import Button from "@/components/ui/Button"
 import Card from "@/components/ui/Card"
 import StreamingOutput from "./StreamingOutput"
 import { useToast } from "@/components/ui/Toast"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism"
+
+function languageFromPath(path) {
+  const ext = (path || "").split(".").pop()
+  const map = {
+    js: "javascript", jsx: "jsx", ts: "typescript", tsx: "tsx",
+    py: "python", json: "json", css: "css", html: "markup", md: "markdown",
+  }
+  return map[ext] || "text"
+}
 
 /**
  * FORGE — CodeReview
@@ -79,7 +90,25 @@ export default function CodeReview({ session, onApproved, onPushComplete }) {
         </Card>
       )}
 
-      <StreamingOutput content={draft.content} done={true} title={subtask.file_path} />
+      {draft.new_content ? (
+        <div className="overflow-hidden rounded-lg border border-border">
+          <div className="flex items-center gap-2 border-b border-border bg-elevated px-4 py-2.5">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+            <span className="font-mono text-xs text-muted">{subtask.file_path}</span>
+          </div>
+          <SyntaxHighlighter
+            language={languageFromPath(subtask.file_path)}
+            style={vscDarkPlus}
+            showLineNumbers
+            customStyle={{ margin: 0, fontSize: "12px", maxHeight: "480px" }}
+            codeTagProps={{ style: { fontFamily: "var(--font-mono, monospace)" } }}
+          >
+            {draft.new_content}
+          </SyntaxHighlighter>
+        </div>
+      ) : (
+        <StreamingOutput content={draft.content} done={true} title={subtask.file_path} />
+      )}
 
       {error && (
         <Card variant="danger" padding="sm">
