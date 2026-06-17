@@ -55,7 +55,7 @@ const Button = forwardRef(function Button(
 
   // Workshop variants - identical to before, zero regression
   const workshopVariants = {
-    primary: "bg-accent text-base border-accent hover:bg-[#7FA4E8] focus-visible:outline-accent",
+    primary: "bg-accent text-base border-accent hover:bg-[var(--accent-hover)] focus-visible:outline-accent",
     ghost:   "bg-transparent text-secondary border-border-2 hover:border-accent-line hover:text-primary focus-visible:outline-accent",
     danger:  "bg-transparent text-error border-error/30 hover:bg-error-soft hover:border-error/50 focus-visible:outline-error",
     surface: "bg-elevated text-secondary border-border-2 hover:border-accent-line hover:text-primary focus-visible:outline-accent",
