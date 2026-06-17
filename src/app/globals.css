@@ -74,6 +74,45 @@
   --radius-lg: 10px;  --radius-xl: 16px;  --radius-pill: 999px;
 }
 
+/* ─── WORKSHOP THEME — now light, not dark ──────────────────────
+   Reuses the proven paper surfaces for backgrounds/text. Accent and
+   status hues are RE-DERIVED from their original dark-theme values
+   (same hue + saturation, lightness reduced) so each one clears
+   4.5:1 contrast against the paper background — the originals were
+   tuned for a near-black background and fail badly on light paper
+   (e.g. old --accent #6E94D6 was only 2.71:1 on paper; new #386BC5
+   is 4.57:1). All five land within ~1.0-1.03:1 of each other, i.e.
+   equal perceptual weight, matching this file's original design
+   intent for status colors — just recalibrated for a light surface. */
+[data-theme="workshop"] {
+  --bg-base:      #F4F1EA;
+  --bg-surface:   #ECE7DC;
+  --bg-elevated:  #E3DDCE;
+  --bg-border:    #D8D2C4;
+  --bg-border-2:  #C2BBA9;
+  --text-primary:   #1C1B18;
+  --text-secondary: #5C5850;
+  --text-muted:     #6C675C;
+
+  --accent:        #386BC5;
+  --accent-hover:  #5782CF;
+  --accent-soft:   rgba(56, 107, 197, 0.14);
+  --accent-line:   rgba(56, 107, 197, 0.35);
+
+  --selected:       #8256BE;
+  --selected-soft:  rgba(130, 86, 190, 0.14);
+  --selected-line:  rgba(130, 86, 190, 0.35);
+
+  --success:      #36794D;
+  --success-soft: rgba(54, 121, 77, 0.14);
+  --warning:      #8E6317;
+  --warning-soft: rgba(142, 99, 23, 0.14);
+  --error:        #BF422E;
+  --error-soft:   rgba(191, 66, 46, 0.14);
+  --info:         var(--accent);
+  --info-soft:    var(--accent-soft);
+}
+
 /* ─── RESET ──────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -286,7 +325,7 @@ body {
   font-weight: 600;
 }
 [data-theme="workshop"] .btn-primary:hover {
-  background: #7FA4E8;
+  background: var(--accent-hover);
 }
 
 /* Section typography helpers */
