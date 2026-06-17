@@ -8,6 +8,7 @@ import StatusDot from "@/components/ui/StatusDot"
 import { useToast } from "@/components/ui/Toast"
 import DependencyGraph from "@/components/graph/DependencyGraph"
 import { useSubgraph } from "@/lib/hooks/useSubgraph"
+import ExplainWhyPanel from "./ExplainWhyPanel"
 
 /**
  * FORGE -- PlanReview
@@ -279,6 +280,13 @@ export default function PlanReview({ session, onApproved, stopPolling }) {
                 <span className="truncate font-mono text-xs text-secondary">{task.file_path}</span>
                 <p className="font-body text-sm leading-relaxed text-secondary">{task.instruction}</p>
                 <StatusDot status={task.status} size="xs" />
+                {i > 0 && subtasks[0]?.file_path && (
+                  <ExplainWhyPanel
+                    repoId={session?.repo_id}
+                    fromPath={subtasks[0].file_path}
+                    toPath={task.file_path}
+                  />
+                )}
               </div>
             </div>
           </Card>
