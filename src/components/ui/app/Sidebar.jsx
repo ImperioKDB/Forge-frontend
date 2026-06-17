@@ -1,10 +1,24 @@
 "use client"
 
-import { useRef, useState, useCallback, useEffect } from "react"
+import { useRef, useState, useCallback, useEffect, useMemo } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useSessions } from "@/lib/hooks/useSessions"
 import { apiFetch } from "@/lib/supabase/api"
 import StatusDot from "@/components/ui/StatusDot"
+
+const STATUS_FILTERS = [
+  { key: "all",       label: "All" },
+  { key: "planning",  label: "Planning",  match: ["planning", "plan_review"] },
+  { key: "coding",    label: "Coding",    match: ["coding", "awaiting_approval"] },
+  { key: "completed", label: "Completed", match: ["done"] },
+  { key: "failed",    label: "Failed",    match: ["failed", "partial_success", "cancelled"] },
+]
+
+function matchesFilter(session, filterKey) {
+  if (filterKey === "all") return true
+  const filter = STATUS_FILTERS.find((f) => f.key === filterKey)
+  return filter ? filter.match.includes(session.status) : true
+}
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -205,7 +219,21 @@ export default function Sidebar({ open, onClose, selectedRepoId, isMobile }) {
   const router   = useRouter()
   const pathname = usePathname()
   const { sessions, loading, refetch } = useSessions(selectedRepoId)
-  const grouped  = groupSessions(sessions)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+
+  const filteredSessions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return sessions.filter((s) => {
+      if (!matchesFilter(s, statusFilter)) return false
+      if (!q) return true
+      const task = (s.task || "").toLowerCase()
+      const repo = (s.repos?.name || "").toLowerCase()
+      return task.includes(q) || repo.includes(q)
+    })
+  }, [sessions, searchQuery, statusFilter])
+
+  const grouped  = groupSessions(filteredSessions)
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
 
@@ -271,6 +299,34 @@ export default function Sidebar({ open, onClose, selectedRepoId, isMobile }) {
         </button>
       </div>
 
+      {/* Search + status filter */}
+      {showLabels && (
+        <div className="shrink-0 border-b border-border px-2 py-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search sessions…"
+            className="w-full rounded-md border border-border bg-base px-2.5 py-1.5 font-body text-xs text-primary placeholder:text-muted focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          />
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className={`rounded-pill px-2 py-1 font-mono text-[10px] uppercase tracking-wide transition-colors duration-fast ${
+                  statusFilter === f.key
+                    ? "bg-accent-soft text-accent"
+                    : "text-muted hover:bg-elevated hover:text-secondary"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Sessions */}
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Recent sessions">
         {showLabels ? (
@@ -280,6 +336,11 @@ export default function Sidebar({ open, onClose, selectedRepoId, isMobile }) {
             <div className="px-4 py-8 text-center">
               <p className="font-body text-xs text-muted">No sessions yet</p>
               <p className="mt-1 font-mono text-xs text-muted opacity-60">Start your first task above</p>
+            </div>
+          ) : filteredSessions.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <p className="font-body text-xs text-muted">No sessions match</p>
+              <p className="mt-1 font-mono text-xs text-muted opacity-60">Try a different search or filter</p>
             </div>
           ) : (
             grouped.map(([group, items]) => (
