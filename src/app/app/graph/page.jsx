@@ -284,6 +284,29 @@ function GraphCanvas({ graph, selectedFileId, onSelectFile }) {
             )
           })}
         </g>
+
+        {/* ─── Inline filename labels — only when the graph is small ─── */}
+        {nodes.length <= 40 && (
+          <g>
+            {nodes.map((n) => {
+              const filename = (n.path || "").split("/").pop()
+              const isSelected = n.id === selectedFileId
+              return (
+                <text
+                  key={`label-${n.id}`}
+                  x={n.x}
+                  y={n.y + nodeRadius + 11}
+                  textAnchor="middle"
+                  className="font-mono pointer-events-none"
+                  fontSize={9}
+                  fill={isSelected ? "var(--selected)" : "var(--text-muted)"}
+                >
+                  {filename.length > 20 ? filename.slice(0, 18) + "…" : filename}
+                </text>
+              )
+            })}
+          </g>
+        )}
       </svg>
     </div>
   )
@@ -334,6 +357,23 @@ function SidePanel({ repoId, graph, selectedFileId, onClose }) {
     }
   }
 
+  const [neighborhood, setNeighborhood] = useState(null)
+  const [neighborhoodLoading, setNeighborhoodLoading] = useState(false)
+
+  useEffect(() => {
+    setNeighborhood(null)
+    if (!selectedFileId) return
+    const f = graph.files.find((gf) => gf.id === selectedFileId)
+    if (!f) return
+    let cancelled = false
+    setNeighborhoodLoading(true)
+    apiFetch(`/repos/${repoId}/graph/file?path=${encodeURIComponent(f.path)}`)
+      .then((data) => { if (!cancelled) setNeighborhood(data) })
+      .catch(() => { if (!cancelled) setNeighborhood(null) })
+      .finally(() => { if (!cancelled) setNeighborhoodLoading(false) })
+    return () => { cancelled = true }
+  }, [selectedFileId, repoId, graph.files])
+
   return (
     <div className="flex flex-col gap-3 rounded-md border border-selected-line bg-selected-soft p-4">
       <div className="flex items-start justify-between gap-2">
@@ -352,6 +392,53 @@ function SidePanel({ repoId, graph, selectedFileId, onClose }) {
           ✕
         </button>
       </div>
+
+      {neighborhoodLoading && (
+        <div className="h-12 animate-pulse rounded-md bg-elevated" />
+      )}
+
+      {neighborhood && !neighborhoodLoading && (
+        <div className="flex flex-col gap-2">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
+              Imports ({neighborhood.imports.length})
+            </p>
+            {neighborhood.imports.length === 0 ? (
+              <p className="mt-1 font-body text-xs text-secondary">No outgoing imports.</p>
+            ) : (
+              <ul className="mt-1 flex flex-col gap-1">
+                {neighborhood.imports.map((imp, i) => (
+                  <li key={i} className="truncate font-mono text-[11px] text-secondary">{imp.path}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
+              Importers ({neighborhood.importers.length})
+            </p>
+            {neighborhood.importers.length === 0 ? (
+              <p className="mt-1 font-body text-xs text-secondary">Nothing imports this file.</p>
+            ) : (
+              <ul className="mt-1 flex flex-col gap-1">
+                {neighborhood.importers.map((imp, i) => (
+                  <li key={i} className="truncate font-mono text-[11px] text-secondary">{imp.path}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {neighborhood.repo_url && file?.path && (
+            <a
+              href={`${neighborhood.repo_url}/blob/main/${file.path}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 self-start font-mono text-[11px] text-accent hover:underline"
+            >
+              View in GitHub →
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">
