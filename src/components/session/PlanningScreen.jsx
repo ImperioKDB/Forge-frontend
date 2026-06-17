@@ -4,7 +4,9 @@ import { useRef, useEffect, useMemo, useState } from "react"
 import DependencyGraph from "@/components/graph/DependencyGraph"
 import { usePlannerTrace } from "@/lib/hooks/usePlannerTrace"
 
-const ACCENT   = "#3DBA6F"
+const ACCENT   = "var(--accent)"  // was a hardcoded green (#3DBA6F), unrelated to
+                                   // the blue --accent used everywhere else for the
+                                   // same "part of the graph" meaning -- now shared.
 const VB_W     = 420
 const VB_H     = 300
 const CX       = VB_W / 2        // 210
@@ -101,7 +103,7 @@ function GhostGraph() {
         fontFamily="monospace"
         fontSize={9}
         letterSpacing="0.14em"
-        fill="#888"
+        fill="var(--text-muted)"
       >
         PRIMARY
       </text>
@@ -112,7 +114,7 @@ function GhostGraph() {
         textAnchor="middle"
         fontFamily="monospace"
         fontSize={10}
-        fill="#aaa"
+        fill="var(--text-secondary)"
       >
         analysing…
       </text>
