@@ -135,7 +135,7 @@ function ImpactPreview({ repoId, task }) {
       setLoading(true)
       setError(false)
       try {
-        const data = await apiFetch(`/repos/${repoId}/impact-preview?q=${encodeURIComponent(task)}`)
+        const data = await apiFetch(`/repos/${repoId}/impact-preview-smart?q=${encodeURIComponent(task)}`)
         setFiles(data?.files || [])
       } catch {
         setError(true)
