@@ -13,10 +13,16 @@ function Cursor() {
 }
 
 function RetryBanner({ retryCount, maxRetries }) {
+  // Suppress the banner for the first couple of silent retries — brief
+  // disconnects happen constantly on mobile networks and showing
+  // "Reconnecting (attempt 1/10)" immediately makes the product feel
+  // fragile for something that resolves itself in under a second.
+  if (retryCount < 3) return null
+
   return (
     <div className="flex items-center gap-2 border-b border-accent-line bg-accent-soft px-4 py-2 font-mono text-xs text-accent">
       <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent" />
-      Reconnecting… (attempt {retryCount}/{maxRetries})
+      Connection interrupted — retrying… ({retryCount}/{maxRetries})
     </div>
   )
 }
